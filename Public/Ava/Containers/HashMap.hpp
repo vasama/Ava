@@ -123,7 +123,7 @@ public:
 	}
 
 #undef Ava_SFINAE
-#define Ava_SFINAE(...) EnableIf<IsSameKeyClass<TKey, Decay<TInKey>> && HasConv<TInValue, TValue>, __VA_ARGS__>
+#define Ava_SFINAE(...) EnableIf<IsSameKeyClass<TKey, Decay<TInKey>> && IsConvertibleTo<TInValue, TValue>, __VA_ARGS__>
 
 	template<typename TInKey, typename TInValue>
 	Ava_FORCEINLINE Ava_SFINAE(InsertResult) Insert(TInKey&& key, TInValue&& value)

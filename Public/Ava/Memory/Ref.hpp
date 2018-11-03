@@ -51,7 +51,7 @@ public:
 		Base::m_ptr = ptr;
 	}
 
-#define Ava_SFINAE EnableIf<HasConv<TIn*, T*>>
+#define Ava_SFINAE EnableIf<IsConvertibleTo<TIn*, T*>>
 
 	template<typename TIn, typename = Ava_SFINAE>
 	Ava_FORCEINLINE Ref(Ref<TIn, TDelete, TTraits>&& other)
@@ -110,7 +110,7 @@ public:
 		return *this;
 	}
 
-#define Ava_SFINAE(...) EnableIf<HasConv<TIn*, T*>, __VA_ARGS__>
+#define Ava_SFINAE(...) EnableIf<IsConvertibleTo<TIn*, T*>, __VA_ARGS__>
 
 	template<typename TIn>
 	Ava_SFINAE(Ref&) operator=(Ref<TIn, TDelete, TTraits>&& other)

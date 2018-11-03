@@ -148,14 +148,14 @@ public:
 		Base::SetTombstone();
 	}
 
-	template<typename TIn, EnableIf<!IsSame<Decay<TIn>, Maybe> && HasConv<TIn, T>, int> = 0>
+	template<typename TIn, EnableIf<!IsSame<Decay<TIn>, Maybe> && IsConvertibleTo<TIn, T>, int> = 0>
 	Ava_FORCEINLINE Maybe(TIn&& value)
 	{
 		Base::ResetTombstone();
 		Base::m_storage.Construct(Forward<TIn>(value));
 	}
 
-	template<typename TIn, EnableIf<!IsSame<Decay<TIn>, Maybe> && !HasConv<TIn, T>, int> = 0>
+	template<typename TIn, EnableIf<!IsSame<Decay<TIn>, Maybe> && !IsConvertibleTo<TIn, T>, int> = 0>
 	explicit Ava_FORCEINLINE Maybe(TIn&& value)
 	{
 		Base::ResetTombstone();
@@ -228,10 +228,10 @@ public:
 		other.m_storage.Destroy(); \
 		other.SetTombstone(); }
 
-	template<typename TIn, typename TInTraits, EnableIf<HasConv<TIn, T>, int> = 0>
+	template<typename TIn, typename TInTraits, EnableIf<IsConvertibleTo<TIn, T>, int> = 0>
 	Ava_FORCEINLINE Maybe(Maybe<TIn, TInTraits>&& other) { Ava_FUNC_BODY }
 
-	template<typename TIn, typename TInTraits, EnableIf<!HasConv<TIn, T>, int> = 0>
+	template<typename TIn, typename TInTraits, EnableIf<!IsConvertibleTo<TIn, T>, int> = 0>
 	explicit Ava_FORCEINLINE Maybe(Maybe<TIn, TInTraits>&& other) { Ava_FUNC_BODY }
 
 #undef Ava_FUNC_BODY
@@ -242,10 +242,10 @@ public:
 		Base::ResetTombstone(); \
 		Base::m_storage.Construct(*other.m_storage); }
 
-	template<typename TIn, typename TInTraits, EnableIf<HasConv<TIn, T>, int> = 0>
+	template<typename TIn, typename TInTraits, EnableIf<IsConvertibleTo<TIn, T>, int> = 0>
 	Ava_FORCEINLINE Maybe(const Maybe<TIn, TInTraits>& other) { Ava_FUNC_BODY }
 
-	template<typename TIn, typename TInTraits, EnableIf<!HasConv<TIn, T>, int> = 0>
+	template<typename TIn, typename TInTraits, EnableIf<!IsConvertibleTo<TIn, T>, int> = 0>
 	explicit Ava_FORCEINLINE Maybe(const Maybe<TIn, TInTraits>& other) { Ava_FUNC_BODY }
 
 #undef Ava_FUNC_BODY
@@ -311,7 +311,7 @@ public:
 		return *this;
 	}
 
-#define Ava_SFINAE(...) EnableIf<HasConv<TIn, T>, __VA_ARGS__>
+#define Ava_SFINAE(...) EnableIf<IsConvertibleTo<TIn, T>, __VA_ARGS__>
 
 	template<typename TIn, typename TInTraits>
 	Ava_FORCEINLINE Ava_SFINAE(Maybe&) operator=(Maybe<TIn, TInTraits>&& other)
@@ -357,7 +357,7 @@ public:
 	}
 
 #undef Ava_SFINAE
-#define Ava_SFINAE(...) EnableIf<HasConv<Decay<TIn>, T>, __VA_ARGS__>
+#define Ava_SFINAE(...) EnableIf<IsConvertibleTo<Decay<TIn>, T>, __VA_ARGS__>
 
 	template<typename TIn>
 	Ava_FORCEINLINE Ava_SFINAE(Maybe&) operator=(TIn&& value)

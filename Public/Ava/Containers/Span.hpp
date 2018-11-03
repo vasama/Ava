@@ -32,14 +32,14 @@ struct Span
 	}
 
 	template<typename TIn, uword TSize,
-		typename = EnableIf<HasConv<TIn**, T* const*>>>
+		typename = EnableIf<IsConvertibleTo<TIn**, T* const*>>>
 	Ava_FORCEINLINE Span(TIn(&data)[TSize])
 		: m_data(data), m_size((iword)TSize)
 	{
 	}
 
 	template<typename TIn,
-		typename = EnableIf<HasConv<TIn**, T* const*>>>
+		typename = EnableIf<IsConvertibleTo<TIn**, T* const*>>>
 	Ava_FORCEINLINE Span(Span<TIn> other)
 		: m_data(other.m_data), m_size(other.m_size)
 	{
