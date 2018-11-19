@@ -2,7 +2,7 @@
 
 #include "Ava/Misc.hpp"
 
-namespace Ava::Private::Containers {
+namespace Ava::Private::Containers_ {
 
 struct NullAllocator
 {
@@ -20,4 +20,4 @@ constexpr Ava_FORCEINLINE bool operator!=(
 	return false;
 }
 
-} // namespace Ava::Private::Containers
+} // namespace Ava::Private::Containers_

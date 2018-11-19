@@ -3,7 +3,7 @@
 #include "Ava/Containers/KeyValuePair.hpp"
 #include "Ava/Misc.hpp"
 
-namespace Ava::Private::Containers {
+namespace Ava::Private::Containers_ {
 
 struct MapTraits
 {
@@ -17,4 +17,4 @@ struct MapTraits
 	}
 };
 
-} // namespace Ava::Private::Containers
+} // namespace Ava::Private::Containers_

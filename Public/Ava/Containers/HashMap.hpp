@@ -22,7 +22,7 @@ template<typename TKey, typename TValue, typename THasher, typename TStoragePoli
 class BasicHashMap
 {
 	typedef Private::Containers_HashTable::Table<
-		KeyValuePair<TKey, TValue>, Private::Containers::MapTraits,
+		KeyValuePair<TKey, TValue>, Private::Containers_::MapTraits,
 		SelectDefault<THasher, SelectHasher<TKey>>, TStoragePolicy> Table;
 
 public:

@@ -20,7 +20,7 @@ namespace Ava {
 template<typename T, typename THasher, typename TStoragePolicy>
 class BasicHashSet
 {
-	typedef Private::Containers_HashTable::Table<T, Private::Containers::SetTraits,
+	typedef Private::Containers_HashTable::Table<T, Private::Containers_::SetTraits,
 		SelectDefault<THasher, SelectHasher<T>>, TStoragePolicy> Table;
 
 public:

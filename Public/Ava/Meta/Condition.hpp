@@ -2,7 +2,7 @@
 
 namespace Ava {
 
-namespace Private::Meta {
+namespace Private::Meta_ {
 
 template<bool>
 struct Condition;
@@ -21,10 +21,10 @@ struct Condition<1>
 	using Select = T;
 };
 
-} // namespace Private::Meta
+} // namespace Private::Meta_
 
 template<bool TBool, typename T1, typename T0>
-using Condition = typename Private::Meta
+using Condition = typename Private::Meta_
 	::Condition<TBool>::template Select<T1, T0>;
 
 } // namespace Ava

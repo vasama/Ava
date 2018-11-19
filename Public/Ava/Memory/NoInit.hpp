@@ -2,10 +2,12 @@
 
 namespace Ava {
 
-namespace Private::Memory {
-enum class NoInit {};
-} // namespace Private::Memory
+namespace Private::Memory_ {
 
-constexpr Private::Memory::NoInit NoInit = {};
+enum class NoInit {};
+
+} // namespace Private::Memory_
+
+constexpr Private::Memory_::NoInit NoInit = {};
 
 } // namespace Ava

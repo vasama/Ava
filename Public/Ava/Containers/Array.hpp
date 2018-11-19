@@ -59,13 +59,13 @@ struct Local_DestroyLayer<T, TCapacity, 1> : Local_Base<T, TCapacity>
 
 template<typename T, iword TCapacity>
 class StorageLayer<T, StoragePolicy::Local<TCapacity>>
-	: public Private::Containers::NullAllocator
+	: public Private::Containers_::NullAllocator
 	, Local_DestroyLayer<T, TCapacity>
 {
 	typedef Local_Base<T, TCapacity> Base;
 
 public:
-	typedef Private::Containers::NullAllocator AllocatorType;
+	typedef Private::Containers_::NullAllocator AllocatorType;
 
 	StorageLayer(StorageLayer&& other)
 	{

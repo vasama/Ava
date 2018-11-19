@@ -2,7 +2,7 @@
 
 #include "Ava/Misc.hpp"
 
-namespace Ava::Private::Containers {
+namespace Ava::Private::Containers_ {
 
 struct SetTraits
 {
@@ -16,4 +16,4 @@ struct SetTraits
 	}
 };
 
-} // namespace Ava::Private::Containers
+} // namespace Ava::Private::Containers_

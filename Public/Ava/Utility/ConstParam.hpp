@@ -13,16 +13,16 @@ namespace Ava {
 	&& std::is_trivially_copyable_v<T>, const T, const T&>
 
 #if Ava_MSVC
-namespace Private::Utility {
+namespace Private::Utility_ {
 template<typename T>
 struct ConstParam
 {
 	typedef Ava_TEMP Type;
 };
-} // namespace Private::Utility
+} // namespace Private::Utility_
 
 template<typename T>
-using ConstParam = typename Private::Utility::ConstParam<T>::Type;
+using ConstParam = typename Private::Utility_::ConstParam<T>::Type;
 #else
 template<typename T>
 using ConstParam = Ava_TEMP;
