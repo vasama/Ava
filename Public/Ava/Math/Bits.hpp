@@ -63,7 +63,8 @@ constexpr EnableIf<IsUnsigned<T>, T> IsPowerOfTwo(T x)
 template<typename T>
 constexpr EnableIf<IsUnsigned<T>, T> NextPowerOfTwo(T x)
 {
-	return Private::Math_Constexpr::NextPowerOfTwo(x, 0);
+	return (x & (x - 1)) == 0 ? x :
+		Private::Math_Constexpr::NextPowerOfTwo(x, 0);
 }
 
 } // namespace Math::Constexpr
