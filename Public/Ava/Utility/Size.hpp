@@ -6,7 +6,7 @@
 namespace Ava {
 
 template<typename T, uword TSize>
-Ava_FORCEINLINE iword Size(const T(&)[TSize])
+constexpr Ava_FORCEINLINE iword Size(const T(&)[TSize])
 {
 	return (iword)TSize;
 }
