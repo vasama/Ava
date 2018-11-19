@@ -351,7 +351,7 @@ public:
 
 			if (minCapacity > maxSize)
 				Rehash(Math::Max(capacity * 2, Math::Max(BlockType::Size,
-					(iword)Math::NextPowerOfTwo((uword)minCapacity))));
+					(iword)Math::RoundUpToPowerOfTwo((uword)minCapacity))));
 		}
 		else Ava_Assert(minCapacity < Base::GetCapacity());
 	}

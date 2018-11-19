@@ -29,7 +29,7 @@ Ava_FORCEINLINE EnableIf<IsUnsigned<T>, T> IsPowerOfTwo(T x)
 }
 
 template<typename T>
-Ava_FORCEINLINE EnableIf<IsUnsigned<T>, T> NextPowerOfTwo(T x)
+Ava_FORCEINLINE EnableIf<IsUnsigned<T>, T> RoundUpToPowerOfTwo(T x)
 {
 	if (IsPowerOfTwoOrZero(x))
 		return x;
@@ -43,11 +43,11 @@ Ava_FORCEINLINE EnableIf<IsUnsigned<T>, T> NextPowerOfTwo(T x)
 namespace Private::Math_Constexpr {
 
 template<typename T>
-constexpr T NextPowerOfTwo(T x, u32 i)
+constexpr T RoundUpToPowerOfTwo(T x, u32 i)
 {
 	return x & Math::HighBit<T>
 		? Math::HighBit<T> >> (i - 1)
-		: NextPowerOfTwo(x << 1, i + 1);
+		: RoundUpToPowerOfTwo(x << 1, i + 1);
 }
 
 } // namespace Private::Math_Constexpr
@@ -61,10 +61,10 @@ constexpr EnableIf<IsUnsigned<T>, T> IsPowerOfTwo(T x)
 }
 
 template<typename T>
-constexpr EnableIf<IsUnsigned<T>, T> NextPowerOfTwo(T x)
+constexpr EnableIf<IsUnsigned<T>, T> RoundUpToPowerOfTwo(T x)
 {
 	return (x & (x - 1)) == 0 ? x :
-		Private::Math_Constexpr::NextPowerOfTwo(x, 0);
+		Private::Math_Constexpr::RoundUpToPowerOfTwo(x, 0);
 }
 
 } // namespace Math::Constexpr

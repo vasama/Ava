@@ -24,7 +24,7 @@ constexpr uword CalculateAlignment(uword x)
 	if (Math::Constexpr::IsPowerOfTwo(x))
 		return x;
 
-	return Math::Constexpr::NextPowerOfTwo(x);
+	return Math::Constexpr::RoundUpToPowerOfTwo(x);
 }
 
 } // namespace Constexpr
