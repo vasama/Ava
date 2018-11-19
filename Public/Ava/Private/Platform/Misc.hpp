@@ -1,7 +1,9 @@
 #pragma once
 
 #include "Ava/Preprocessor/Str.hpp"
+#include "Ava/Private/Platform/Arch.hpp"
 #include "Ava/Private/Platform/Compiler.hpp"
+#include "Ava/Private/Platform/Os.hpp"
 
 #include Ava_PP_STR(Ava/Private/Platform/Ava_COMPILER/Misc.ipp)
 
