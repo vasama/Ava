@@ -15,14 +15,7 @@ template<typename T>
 Ava_FORCEINLINE auto Size(const T& container)
 	-> decltype((iword)Ava_Ext_Size(container))
 {
-	return (iword)Ava_Ext_Size(container);
-}
-
-template<typename T>
-Ava_FORCEINLINE auto Size(const T& container)
-	-> decltype((iword)container.Size())
-{
-	return (iword)container.Size();
+	return Ava_Ext_Size(container);
 }
 
 } // namespace Ava
