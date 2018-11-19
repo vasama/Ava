@@ -10,8 +10,15 @@
 using namespace Ava;
 
 #if Ava_CONFIG_ASSERT > 0
+static bool GHandling = false;
+
 bool Ava::Private::Debug_Assert::Fail(const char* expr, const char* file, i32 line, const char* fmt, ...)
 {
+	if (GHandling)
+		::abort();
+
+	GHandling = true;
+
 	Debug::AssertInfo info;
 
 	info.Expr = StringSpan<char>::FromCString(expr);
@@ -30,9 +37,11 @@ bool Ava::Private::Debug_Assert::Fail(const char* expr, const char* file, i32 li
 		::abort();
 
 	case Debug::AssertAction::Break:
+		GHandling = false;
 		return true;
 
 	case Debug::AssertAction::Continue:
+		GHandling = false;
 		return false;
 	}
 
