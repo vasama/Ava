@@ -37,12 +37,12 @@ void Ava::Private::Utility_MurmurHash::Hash_x64
 	Block_x64 hash{ m_hash1, m_hash2 };
 
 	const uword* first = (const uword*)data;
-	const uword* last = first + size / sizeof(uword);
+	iword blockCount = (iword)(size / 16);
 
-	for (; first != last; first += 2)
-		hash = MixBlock_x64(hash, first[0], first[1]);
+	for (iword i = 0; i < blockCount; ++i)
+		hash = MixBlock_x64(hash, first[i * 2], first[i * 2 + 1]);
 
-	const byte* tail = (const byte*)last;
+	const byte* tail = (const byte*)first + blockCount * 16;
 
 	uword temp1 = 0;
 	uword temp2 = 0;
