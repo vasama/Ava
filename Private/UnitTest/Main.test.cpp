@@ -30,10 +30,10 @@ struct : doctest::IValidator
 
 	virtual void test_case_end(const doctest::TestCaseValidation& validation) override
 	{
-		if (uword memoryUsage = GMemoryUsage)
+		if (iword memoryUsage = GMemoryUsage)
 			validation.addFailure() << "Leaked " << memoryUsage << " bytes.";
 
-		if (uword instanceCount = GInstanceCount)
+		if (iword instanceCount = GInstanceCount)
 			validation.addFailure() << "Leaked " << instanceCount << " objects.";
 
 		GMemoryUsage = 0;
@@ -70,7 +70,7 @@ void Ava::UnitTest::InstanceCounter::Decrement()
 Debug::AssertAction Ava::Debug::AssertCallback(Debug::AssertInfo* info)
 {
 	DOCTEST_ADD_FAIL_AT(info->File.Data(), info->Line, info->Expr.Data());
-	return Debug::AssertAction::Continue;
+	return Debug::AssertAction::Break;
 }
 
 int main(int argc, const char* const* argv)
