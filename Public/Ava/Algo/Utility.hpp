@@ -6,6 +6,7 @@
 #include "Ava/Meta/Traits.hpp"
 #include "Ava/Meta/TypeTraits.hpp"
 #include "Ava/Misc.hpp"
+#include "Ava/Private/PointerMath.hpp"
 #include "Ava/Types.hpp"
 #include "Ava/Utility/ConstParam.hpp"
 #include "Ava/Utility/Move.hpp"
@@ -149,7 +150,7 @@ Ava_FORCEINLINE void ValueConstruct(TIterator first, TIterator last)
 
 	if constexpr (IsContiguousIterator<TIterator> && IsZeroConstructible<T>)
 	{
-		Memory::Zero(&*first, (last - first) * sizeof(T));
+		Memory::Zero(&*first, Ava_PTRSUB(&*last, &*first));
 	}
 	else
 	{
@@ -252,7 +253,7 @@ Ava_FORCEINLINE void MoveConstruct(TIterator first, TSrcIterator srcFirst, TSrcI
 	if constexpr (IsContiguousIterator<TSrcIterator> &&
 		IsContiguousIterator<TIterator> && IsTriviallyCopyable<T>)
 	{
-		Memory::Copy(&*first, &*srcFirst, (srcLast - srcFirst) * sizeof(T));
+		Memory::Copy(&*first, &*srcFirst, Ava_PTRSUB(&*srcLast, &*srcFirst));
 	}
 	else
 	{
@@ -293,7 +294,7 @@ Ava_FORCEINLINE void CopyConstruct(TIterator first, TSrcIterator srcFirst, TSrcI
 	if constexpr (IsContiguousIterator<TSrcIterator> &&
 		IsContiguousIterator<TIterator> && IsTriviallyCopyable<T>)
 	{
-		Memory::Copy(&*first, &*srcFirst, (srcLast - srcFirst) * sizeof(T));
+		Memory::Copy(&*first, &*srcFirst, Ava_PTRSUB(&*srcLast, &*srcFirst));
 	}
 	else
 	{
@@ -334,7 +335,7 @@ Ava_FORCEINLINE void RelocateFwd(TIterator first, TSrcIterator srcFirst, TSrcIte
 	if constexpr (IsContiguousIterator<TSrcIterator> &&
 		IsContiguousIterator<TIterator> && IsTriviallyRelocatable<T>)
 	{
-		Memory::MoveFwd(&*first, &*srcFirst, (srcLast - srcFirst) * sizeof(T));
+		Memory::MoveFwd(&*first, &*srcFirst, Ava_PTRSUB(&*srcLast, &*srcFirst));
 	}
 	else
 	{
@@ -375,7 +376,7 @@ Ava_FORCEINLINE void RelocateBwd(TIterator last, TSrcIterator srcLast, TSrcItera
 	if constexpr (IsContiguousIterator<TSrcIterator> &&
 		IsContiguousIterator<TIterator> && IsTriviallyRelocatable<T>)
 	{
-		uword size = (srcLast - srcFirst) * sizeof(T);
+		uword size = Ava_PTRSUB(&*srcLast, &*srcFirst);
 		Memory::MoveBwd((byte*)&*last - size, &*srcFirst, size);
 	}
 	else
@@ -455,7 +456,7 @@ Ava_FORCEINLINE void MoveFwd(TIterator first, TSrcIterator srcFirst, TSrcIterato
 	if constexpr (IsContiguousIterator<TSrcIterator> &&
 		IsContiguousIterator<TIterator> && IsTriviallyCopyable<T>)
 	{
-		Memory::Copy(&*first, &*srcFirst, (srcLast - srcFirst) * sizeof(T));
+		Memory::Copy(&*first, &*srcFirst, Ava_PTRSUB(&*srcLast, &*srcFirst));
 	}
 	else
 	{
@@ -496,7 +497,7 @@ Ava_FORCEINLINE void CopyFwd(TIterator first, TSrcIterator srcFirst, TSrcIterato
 	if constexpr (IsContiguousIterator<TSrcIterator> &&
 		IsContiguousIterator<TIterator> && IsTriviallyCopyable<T>)
 	{
-		Memory::Copy(&*first, &*srcFirst, (srcLast - srcFirst) * sizeof(T));
+		Memory::Copy(&*first, &*srcFirst, Ava_PTRSUB(&*srcLast, &*srcFirst));
 	}
 	else
 	{
