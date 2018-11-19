@@ -4,6 +4,7 @@
 #include "Ava/Misc.hpp"
 #include "Ava/Private/Ebo.hpp"
 #include "Ava/Types.hpp"
+#include "Ava/Utility/Forward.hpp"
 #include "Ava/Utility/Move.hpp"
 
 namespace Ava {
@@ -13,6 +14,12 @@ struct PolymorphicResource : Ava_EBO(VirtualResource, TResource)
 {
 	Ava_FORCEINLINE PolymorphicResource()
 		: VirtualResource(this)
+	{
+	}
+
+	template<typename... TArgs>
+	Ava_FORCEINLINE PolymorphicResource(TArgs&&... args)
+		: VirtualResource(this), TResource(Forward<TArgs>(args)...)
 	{
 	}
 
