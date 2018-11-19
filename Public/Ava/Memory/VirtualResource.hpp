@@ -34,7 +34,7 @@ public:
 		return other.m_vptr == vptr && vptr->m_equals(this, &other);
 	}
 
-	Ava_API VirtualResource* GetDefaultResource();
+	static Ava_API VirtualResource* GetDefaultResource();
 
 protected:
 	template<typename TResource>
@@ -49,7 +49,7 @@ private:
 	const VTable* m_vptr;
 
 	template<typename T>
-	static const VTable s_vtable;
+	static inline const VTable s_vtable;
 };
 
 } // namespace Ava
