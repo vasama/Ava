@@ -4,16 +4,15 @@ namespace Ava {
 
 namespace Private::Meta {
 
-template<typename...>
+template<typename T, typename...>
 struct Identity
 {
-	template<typename T>
-	using Select = T;
+	typedef T Type;
 };
 
 } // namespace Private::Meta
 
 template<typename T, typename... Ts>
-using Identity = typename Private::Meta::Identity<Ts...>::template Select<T>;
+using Identity = typename Private::Meta::Identity<T, Ts...>::Type;
 
 } // namespace Ava
