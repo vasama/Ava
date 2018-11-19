@@ -13,7 +13,7 @@ TEST_SUITE_BEGIN("Containers/StringSpan");
 TEST_CASE("Construct")
 {
 	StringSpan span = "test";
-	CHECK(span.Length() == 4);
+	CHECK(span.Size() == 4);
 }
 
 TEST_CASE("Subscript")
@@ -30,7 +30,7 @@ TEST_CASE("Slice")
 	SUBCASE("Implicit length")
 	{
 		span = span.Slice(1);
-		REQUIRE(span.Length() == 3);
+		REQUIRE(span.Size() == 3);
 
 		CHECK(span[0] == 'e');
 		CHECK(span[2] == 't');
@@ -39,7 +39,7 @@ TEST_CASE("Slice")
 	SUBCASE("Explicit length")
 	{
 		span = span.Slice(1, 2);
-		REQUIRE(span.Length() == 2);
+		REQUIRE(span.Size() == 2);
 
 		CHECK(span[0] == 'e');
 		CHECK(span[1] == 's');
