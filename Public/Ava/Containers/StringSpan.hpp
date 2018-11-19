@@ -152,7 +152,4 @@ Ava_FORCEINLINE const T* end(const StringSpan<T>& span)
 
 template<typename T> constexpr bool IsZeroConstructible<StringSpan<T>> = true;
 
-typedef StringSpan<achar> AStringSpan;
-typedef StringSpan<wchar> WStringSpan;
-
 } // namespace Ava

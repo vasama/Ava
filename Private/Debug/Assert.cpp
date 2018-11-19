@@ -10,12 +10,12 @@
 using namespace Ava;
 
 #if Ava_CONFIG_ASSERT > 0
-bool Ava::Private::Debug_Assert::Fail(const achar* expr, const achar* file, i32 line, const achar* fmt, ...)
+bool Ava::Private::Debug_Assert::Fail(const char* expr, const char* file, i32 line, const char* fmt, ...)
 {
 	Debug::AssertInfo info;
 
-	info.Expr = AStringSpan::FromCString(expr);
-	info.File = AStringSpan::FromCString(file);
+	info.Expr = StringSpan<char>::FromCString(expr);
+	info.File = StringSpan<char>::FromCString(file);
 	info.Line = line;
 
 	if (fmt)

@@ -20,30 +20,27 @@ struct CString
 };
 
 template<>
-Ava_FORCEINLINE iword CString<achar>::Length(const achar* cstr)
+Ava_FORCEINLINE iword CString<char>::Length(const char* cstr)
 {
 	return ::strlen(cstr);
 }
 
 template<>
-Ava_FORCEINLINE iword CString<achar>::Length(const achar* cstr, iword maxLength)
+Ava_FORCEINLINE iword CString<char>::Length(const char* cstr, iword maxLength)
 {
 	return ::strnlen(cstr, maxLength);
 }
 
 template<>
-Ava_FORCEINLINE iword CString<wchar>::Length(const wchar* cstr)
+Ava_FORCEINLINE iword CString<wchar_t>::Length(const wchar_t* cstr)
 {
 	return ::wcslen(cstr);
 }
 
 template<>
-Ava_FORCEINLINE iword CString<wchar>::Length(const wchar* cstr, iword maxLength)
+Ava_FORCEINLINE iword CString<wchar_t>::Length(const wchar_t* cstr, iword maxLength)
 {
 	return ::wcsnlen(cstr, maxLength);
 }
-
-typedef CString<achar> ACString;
-typedef CString<wchar> WCString;
 
 } // namespace Ava

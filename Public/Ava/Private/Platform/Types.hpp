@@ -19,9 +19,6 @@ typedef ::uintptr_t uword;
 typedef float f32;
 typedef double f64;
 
-typedef char achar;
-typedef wchar_t wchar;
-
 typedef u8 byte;
 
 } // namespace Ava

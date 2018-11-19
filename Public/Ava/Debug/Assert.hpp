@@ -14,8 +14,8 @@
 
 #if Ava_CONFIG_ASSERT >= 1
 namespace Ava::Private::Debug_Assert {
-bool Ava_API Fail(const achar* expr, const achar* file,
-	i32 line, const achar* fmt = nullptr, ...);
+bool Ava_API Fail(const char* expr, const char* file,
+	i32 line, const char* fmt = nullptr, ...);
 } // namespace Ava_Private::Debug_Assert
 
 #	define Ava_ASSERT_ACTIVE 1
