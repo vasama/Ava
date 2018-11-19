@@ -9,38 +9,40 @@
 namespace Ava {
 
 template<typename TChar>
-struct CString
+struct BasicCString
 {
 	typedef TChar CharType;
 
 	static iword Length(const CharType* cstr);
 	static iword Length(const CharType* cstr, iword maxLength);
 
-	CString() = delete;
+	BasicCString() = delete;
 };
 
 template<>
-Ava_FORCEINLINE iword CString<char>::Length(const char* cstr)
+Ava_FORCEINLINE iword BasicCString<char>::Length(const char* cstr)
 {
 	return ::strlen(cstr);
 }
 
 template<>
-Ava_FORCEINLINE iword CString<char>::Length(const char* cstr, iword maxLength)
+Ava_FORCEINLINE iword BasicCString<char>::Length(const char* cstr, iword maxLength)
 {
 	return ::strnlen(cstr, maxLength);
 }
 
 template<>
-Ava_FORCEINLINE iword CString<wchar_t>::Length(const wchar_t* cstr)
+Ava_FORCEINLINE iword BasicCString<wchar_t>::Length(const wchar_t* cstr)
 {
 	return ::wcslen(cstr);
 }
 
 template<>
-Ava_FORCEINLINE iword CString<wchar_t>::Length(const wchar_t* cstr, iword maxLength)
+Ava_FORCEINLINE iword BasicCString<wchar_t>::Length(const wchar_t* cstr, iword maxLength)
 {
 	return ::wcsnlen(cstr, maxLength);
 }
+
+typedef BasicCString<char> CString;
 
 } // namespace Ava

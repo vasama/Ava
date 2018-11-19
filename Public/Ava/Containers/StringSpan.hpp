@@ -39,7 +39,7 @@ public:
 
 	template<uword TSize>
 	Ava_FORCEINLINE StringSpan(const TChar(&string)[TSize])
-		: m_span(string, CString<TChar>::Length(string, TSize))
+		: m_span(string, BasicCString<TChar>::Length(string, TSize))
 	{
 	}
 
@@ -104,7 +104,7 @@ public:
 
 	static Ava_FORCEINLINE StringSpan FromCString(const TChar* cstr)
 	{
-		return StringSpan(cstr, CString<TChar>::Length(cstr));
+		return StringSpan(cstr, BasicCString<TChar>::Length(cstr));
 	}
 
 	SpanType m_span;
