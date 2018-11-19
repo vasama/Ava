@@ -21,7 +21,7 @@ Ava_FORCEINLINE void ValueConstruct(RemoveConst<T>* ptr)
 	}
 	else
 	{
-		::new(ptr) T();
+		::new((void*)ptr) T();
 	}
 }
 
@@ -47,7 +47,7 @@ Ava_FORCEINLINE void MoveConstruct(RemoveConst<T>* ptr, RemoveConst<T>&& src)
 	}
 	else
 	{
-		::new(ptr) T(Move(src));
+		::new((void*)ptr) T(Move(src));
 	}
 }
 
@@ -60,7 +60,7 @@ Ava_FORCEINLINE void CopyConstruct(RemoveConst<T>* ptr, const Identity<T>& src)
 	}
 	else
 	{
-		::new(ptr) T(src);
+		::new((void*)ptr) T(src);
 	}
 }
 
@@ -87,7 +87,7 @@ Ava_FORCEINLINE void Construct(T* ptr, const T& src)
 template<typename T, typename... TArgs>
 Ava_FORCEINLINE void Construct(T* ptr, TArgs&&... args)
 {
-	::new(ptr) T(Forward<TArgs>(args)...);
+	::new((void*)ptr) T(Forward<TArgs>(args)...);
 }
 
 } // namespace Private::Memory_Utility
@@ -107,7 +107,7 @@ Ava_FORCEINLINE void Relocate(RemoveConst<T>* ptr, RemoveConst<T>* src)
 	}
 	else
 	{
-		new(ptr) T(Move(*src));
+		::new((void*)ptr) T(Move(*src));
 		src->~T();
 	}
 }
