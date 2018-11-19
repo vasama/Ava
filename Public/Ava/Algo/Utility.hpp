@@ -143,36 +143,6 @@ void Copy_Size(TIterator first, TSrcIterator srcFirst, uword count)
 namespace Ava::Algo {
 
 template<typename TIterator>
-Ava_FORCEINLINE void DefaultConstruct(TIterator first, TIterator last)
-{
-	typedef IteratorValue<TIterator> T;
-
-	if constexpr (IsTriviallyConstructible<T>)
-	{
-		Ava_UNUSED(first, last);
-	}
-	else
-	{
-		ValueConstruct(first, last);
-	}
-}
-
-template<typename TIterator>
-Ava_FORCEINLINE void DefaultConstruct(TIterator first, uword count)
-{
-	typedef IteratorValue<TIterator> T;
-
-	if constexpr (IsTriviallyConstructible<T>)
-	{
-		Ava_UNUSED(first, count);
-	}
-	else
-	{
-		ValueConstruct(first, count);
-	}
-}
-
-template<typename TIterator>
 Ava_FORCEINLINE void ValueConstruct(TIterator first, TIterator last)
 {
 	typedef IteratorValue<TIterator> T;
@@ -206,6 +176,36 @@ Ava_FORCEINLINE void ValueConstruct(TIterator first, uword count)
 		{
 			Private::Algo_Utility::ValueConstruct_Size<T>(first, count);
 		}
+	}
+}
+
+template<typename TIterator>
+Ava_FORCEINLINE void DefaultConstruct(TIterator first, TIterator last)
+{
+	typedef IteratorValue<TIterator> T;
+
+	if constexpr (IsTriviallyConstructible<T>)
+	{
+		Ava_UNUSED(first, last);
+	}
+	else
+	{
+		ValueConstruct(first, last);
+	}
+}
+
+template<typename TIterator>
+Ava_FORCEINLINE void DefaultConstruct(TIterator first, uword count)
+{
+	typedef IteratorValue<TIterator> T;
+
+	if constexpr (IsTriviallyConstructible<T>)
+	{
+		Ava_UNUSED(first, count);
+	}
+	else
+	{
+		ValueConstruct(first, count);
 	}
 }
 
