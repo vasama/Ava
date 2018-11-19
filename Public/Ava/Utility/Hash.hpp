@@ -104,6 +104,9 @@ template<> struct SelectHasher<i32> { typedef IntegerHasher Type; };
 template<> struct SelectHasher<u64> { typedef IntegerHasher Type; };
 template<> struct SelectHasher<i64> { typedef IntegerHasher Type; };
 
+template<> struct SelectHasher<char> { typedef IntegerHasher Type; };
+template<> struct SelectHasher<wchar_t> { typedef IntegerHasher Type; };
+
 template<typename T>
 struct SelectHasher<T*> { typedef PointerHasher Type; };
 
