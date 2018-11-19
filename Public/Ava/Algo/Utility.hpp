@@ -70,6 +70,34 @@ void CopyConstruct_Size(TIterator first, TSrcIterator srcFirst, uword count)
 }
 
 template<typename T, typename TIterator, typename TSrcIterator>
+void ConvMoveConstruct_Iter(TIterator first, TSrcIterator srcFirst, TSrcIterator srcLast)
+{
+	for (; srcFirst != srcLast; (void) ++first, (void) ++srcFirst)
+		Construct<T>(&*first, Move(*srcFirst));
+}
+
+template<typename T, typename TIterator, typename TSrcIterator>
+void ConvMoveConstruct_Size(TIterator first, TSrcIterator srcFirst, uword count)
+{
+	for (; count > 0; --count, (void) ++first, (void) ++srcFirst)
+		Construct<T>(&*first, Move(*srcFirst));
+}
+
+template<typename T, typename TIterator, typename TSrcIterator>
+void ConvCopyConstruct_Iter(TIterator first, TSrcIterator srcFirst, TSrcIterator srcLast)
+{
+	for (; srcFirst != srcLast; (void) ++first, (void) ++srcFirst)
+		Construct<T>(&*first, *srcFirst);
+}
+
+template<typename T, typename TIterator, typename TSrcIterator>
+void ConvCopyConstruct_Size(TIterator first, TSrcIterator srcFirst, uword count)
+{
+	for (; count > 0; --count, (void) ++first, (void) ++srcFirst)
+		Construct<T>(&*first, *srcFirst);
+}
+
+template<typename T, typename TIterator, typename TSrcIterator>
 void RelocateFwd_Iter(TIterator first, TSrcIterator srcFirst, TSrcIterator srcLast)
 {
 	for (; srcFirst != srcLast; (void) ++first, (void) ++srcFirst)
@@ -322,6 +350,107 @@ Ava_FORCEINLINE void CopyConstruct(TIterator first, TSrcIterator srcFirst, uword
 		else
 		{
 			Private::Algo_Utility::CopyConstruct_Size<T>(first, srcFirst, count);
+		}
+	}
+}
+
+template<typename TIterator, typename TSrcIterator>
+Ava_FORCEINLINE void ConvMoveConstruct(TIterator first, TSrcIterator srcFirst, TSrcIterator srcLast)
+{
+	typedef IteratorValue<TIterator> T;
+
+	if constexpr (IsSame<IteratorValue<TSrcIterator>, T>)
+	{
+		MoveConstruct(first, srcFirst, srcLast);
+	}
+	else
+	{
+		Private::Algo_Utility::ConvMoveConstruct_Iter<T>(first, srcFirst, srcLast);
+	}
+}
+
+template<typename TIterator, typename TSrcIterator>
+Ava_FORCEINLINE void ConvMoveConstruct(TIterator first, TSrcIterator srcFirst, uword count)
+{
+	typedef IteratorValue<TIterator> T;
+
+	if constexpr (IsSame<IteratorValue<TSrcIterator>, T>)
+	{
+		MoveConstruct(first, srcFirst, count);
+	}
+	else
+	{
+		Private::Algo_Utility::ConvMoveConstruct_Size<T>(first, srcFirst, count);
+	}
+}
+
+template<typename TIterator, typename TSrcIterator>
+Ava_FORCEINLINE void ConvCopyConstruct(TIterator first, TSrcIterator srcFirst, TSrcIterator srcLast)
+{
+	typedef IteratorValue<TIterator> T;
+
+	if constexpr (IsSame<IteratorValue<TSrcIterator>, T>)
+	{
+		CopyConstruct(first, srcFirst, srcLast);
+	}
+	else
+	{
+		Private::Algo_Utility::ConvCopyConstruct_Iter<T>(first, srcFirst, srcLast);
+	}
+}
+
+template<typename TIterator, typename TSrcIterator>
+Ava_FORCEINLINE void ConvCopyConstruct(TIterator first, TSrcIterator srcFirst, uword count)
+{
+	typedef IteratorValue<TIterator> T;
+
+	if constexpr (IsSame<IteratorValue<TSrcIterator>, T>)
+	{
+		CopyConstruct(first, srcFirst, count);
+	}
+	else
+	{
+		Private::Algo_Utility::ConvCopyConstruct_Size<T>(first, srcFirst, count);
+	}
+}
+
+template<typename TIterator, typename TSrcIterator>
+Ava_FORCEINLINE void Relocate(TIterator first, TSrcIterator srcFirst, TSrcIterator srcLast)
+{
+	typedef IteratorValue<TIterator> T;
+	static_assert(IsSame<IteratorValue<TSrcIterator>, T>);
+
+	if constexpr (IsContiguousIterator<TSrcIterator> &&
+		IsContiguousIterator<TIterator> && IsTriviallyRelocatable<T>)
+	{
+		Memory::Copy(&*first, &*srcFirst, Ava_PTRSUB(&*srcLast, &*srcFirst));
+	}
+	else
+	{
+		Private::Algo_Utility::RelocateFwd_Iter<T>(first, srcFirst, srcLast);
+	}
+}
+
+template<typename TIterator, typename TSrcIterator>
+Ava_FORCEINLINE void Relocate(TIterator first, TSrcIterator srcFirst, uword count)
+{
+	typedef IteratorValue<TIterator> T;
+	static_assert(IsSame<IteratorValue<TSrcIterator>, T>);
+
+	if constexpr (IsContiguousIterator<TSrcIterator> &&
+		IsContiguousIterator<TIterator> && IsTriviallyRelocatable<T>)
+	{
+		Memory::Copy(&*first, &*srcFirst, count * sizeof(T));
+	}
+	else
+	{
+		if constexpr (IteratorCategory::Get<TSrcIterator> >= IteratorCategory::RandomAccess)
+		{
+			Private::Algo_Utility::RelocateFwd_Iter<T>(first, srcFirst, srcFirst + count);
+		}
+		else
+		{
+			Private::Algo_Utility::RelocateFwd_Size<T>(first, srcFirst, count);
 		}
 	}
 }
