@@ -10,8 +10,6 @@ namespace {
 
 TEST_SUITE_BEGIN("Containers/StringSpan");
 
-typedef Ava::StringSpan<char> StringSpan;
-
 TEST_CASE("Construct")
 {
 	StringSpan span = "test";

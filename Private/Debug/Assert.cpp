@@ -21,8 +21,8 @@ bool Ava::Private::Debug_Assert::Fail(const char* expr, const char* file, i32 li
 
 	Debug::AssertInfo info;
 
-	info.Expr = StringSpan<char>::FromCString(expr);
-	info.File = StringSpan<char>::FromCString(file);
+	info.Expr = StringSpan::FromCString(expr);
+	info.File = StringSpan::FromCString(file);
 	info.Line = line;
 
 	if (fmt)

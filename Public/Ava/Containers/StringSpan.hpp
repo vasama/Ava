@@ -11,44 +11,44 @@
 namespace Ava {
 
 template<typename TChar>
-class StringSpan
+class BasicStringSpan
 {
 	typedef Span<const TChar> SpanType;
 
 public:
 	typedef typename SpanType::ElementType CharType;
 
-	Ava_FORCEINLINE StringSpan()
+	Ava_FORCEINLINE BasicStringSpan()
 	{
 	}
 
-	Ava_FORCEINLINE StringSpan(Span<TChar> span)
+	Ava_FORCEINLINE BasicStringSpan(Span<TChar> span)
 		: m_span(span)
 	{
 	}
 
-	Ava_FORCEINLINE StringSpan(Span<const TChar> span)
+	Ava_FORCEINLINE BasicStringSpan(Span<const TChar> span)
 		: m_span(span)
 	{
 	}
 
-	Ava_FORCEINLINE StringSpan(const TChar* data, iword size)
+	Ava_FORCEINLINE BasicStringSpan(const TChar* data, iword size)
 		: m_span(data, size)
 	{
 	}
 
 	template<uword TSize>
-	Ava_FORCEINLINE StringSpan(const TChar(&string)[TSize])
+	Ava_FORCEINLINE BasicStringSpan(const TChar(&string)[TSize])
 		: m_span(string, BasicCString<TChar>::Length(string, TSize))
 	{
 	}
 
-	Ava_FORCEINLINE StringSpan(decltype(nullptr))
+	Ava_FORCEINLINE BasicStringSpan(decltype(nullptr))
 		: m_span(nullptr)
 	{
 	}
 
-	Ava_FORCEINLINE StringSpan(decltype(NoInit))
+	Ava_FORCEINLINE BasicStringSpan(decltype(NoInit))
 		: m_span(NoInit)
 	{
 	}
@@ -81,14 +81,14 @@ public:
 	}
 
 
-	Ava_FORCEINLINE StringSpan Slice(iword index)
+	Ava_FORCEINLINE BasicStringSpan Slice(iword index)
 	{
-		return StringSpan(m_span.Slice(index));
+		return BasicStringSpan(m_span.Slice(index));
 	}
 
-	Ava_FORCEINLINE StringSpan Slice(iword index, iword count)
+	Ava_FORCEINLINE BasicStringSpan Slice(iword index, iword count)
 	{
-		return StringSpan(m_span.Slice(index, count));
+		return BasicStringSpan(m_span.Slice(index, count));
 	}
 
 	Ava_FORCEINLINE void RemovePrefix(iword count)
@@ -102,22 +102,22 @@ public:
 	}
 
 
-	static Ava_FORCEINLINE StringSpan FromCString(const TChar* cstr)
+	static Ava_FORCEINLINE BasicStringSpan FromCString(const TChar* cstr)
 	{
-		return StringSpan(cstr, BasicCString<TChar>::Length(cstr));
+		return BasicStringSpan(cstr, BasicCString<TChar>::Length(cstr));
 	}
 
 	SpanType m_span;
 };
 
 template<typename T>
-Ava_FORCEINLINE iword Ava_Ext_Size(const StringSpan<T>& span)
+Ava_FORCEINLINE iword Ava_Ext_Size(const BasicStringSpan<T>& span)
 {
 	return span.m_span.m_size;
 }
 
 template<typename T>
-bool operator==(const StringSpan<T>& lhs, const StringSpan<T>& rhs)
+bool operator==(const BasicStringSpan<T>& lhs, const BasicStringSpan<T>& rhs)
 {
 	Span<const T> ls = lhs.m_span;
 	Span<const T> rs = rhs.m_span;
@@ -133,23 +133,25 @@ bool operator==(const StringSpan<T>& lhs, const StringSpan<T>& rhs)
 }
 
 template<typename T>
-Ava_FORCEINLINE bool operator!=(const StringSpan<T>& lhs, const StringSpan<T>& rhs)
+Ava_FORCEINLINE bool operator!=(const BasicStringSpan<T>& lhs, const BasicStringSpan<T>& rhs)
 {
 	return !(lhs == rhs);
 }
 
 template<typename T>
-Ava_FORCEINLINE const T* begin(const StringSpan<T>& span)
+Ava_FORCEINLINE const T* begin(const BasicStringSpan<T>& span)
 {
 	return span.m_span.m_data;
 }
 
 template<typename T>
-Ava_FORCEINLINE const T* end(const StringSpan<T>& span)
+Ava_FORCEINLINE const T* end(const BasicStringSpan<T>& span)
 {
 	return span.m_span.m_data + span.m_span.m_size;
 }
 
-template<typename T> constexpr bool IsZeroConstructible<StringSpan<T>> = true;
+template<typename T> constexpr bool IsZeroConstructible<BasicStringSpan<T>> = true;
+
+typedef BasicStringSpan<char> StringSpan;
 
 } // namespace Ava

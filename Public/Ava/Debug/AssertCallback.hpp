@@ -6,11 +6,11 @@ namespace Ava::Debug {
 
 struct AssertInfo
 {
-	StringSpan<char> Expr;
-	StringSpan<char> File;
+	StringSpan Expr;
+	StringSpan File;
 	i32 Line;
 
-	StringSpan<char> Message;
+	StringSpan Message;
 };
 
 enum class AssertAction
