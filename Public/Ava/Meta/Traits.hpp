@@ -17,6 +17,10 @@ template<typename T>
 constexpr bool IsTriviallyCopyable = std::is_trivially_copyable_v<T>;
 
 template<typename T>
+constexpr bool IsTrivial = IsTriviallyConstructible<T> &&
+	IsTriviallyCopyable<T> && IsTriviallyDestructible<T>;
+
+template<typename T>
 constexpr bool IsTriviallyRelocatable = IsTriviallyCopyable<T> && IsTriviallyDestructible<T>;
 
 template<typename T>
