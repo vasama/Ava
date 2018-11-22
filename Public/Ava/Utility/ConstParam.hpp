@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Ava/Meta/Condition.hpp"
+#include "Ava/Misc.hpp"
 
 #include <type_traits>
 
@@ -29,5 +30,16 @@ using ConstParam = Ava_TEMP;
 #endif
 
 #undef Ava_TEMP
+
+template<typename T>
+struct ConstParamWrapper
+{
+	explicit Ava_FORCEINLINE ConstParamWrapper(const T& value)
+		: Value(value)
+	{
+	}
+
+	ConstParam<T> Value;
+};
 
 } // namespace Ava
