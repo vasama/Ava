@@ -18,8 +18,12 @@ struct IntegerHasher
 	template<typename T>
 	Ava_FORCEINLINE uword Hash(T value) const
 	{
-		//TODO: mix 64s in 32-bit mode?
-		return (uword)value;
+		if constexpr (sizeof(T) > sizeof(uword))
+		{
+			static_assert(sizeof(T) == 8);
+			return (u32)(value >> 32) ^ (u32)value;
+		}
+		else return (uword)value;
 	}
 };
 
