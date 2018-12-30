@@ -55,8 +55,5 @@
 // C99 restrict. Pointer is not aliased.
 #define Ava_RESTRICT Ava_PLATFORM_RESTRICT
 
-// Break into debugger.
-#define Ava_DEBUGBREAK() Ava_PLATFORM_DEBUGBREAK()
-
 // Mark local variables as unused.
 #define Ava_UNUSED(...) ((void)sizeof(__VA_ARGS__))

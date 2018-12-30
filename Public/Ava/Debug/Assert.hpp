@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Ava/Debug/Debugger.hpp"
 #include "Ava/Misc.hpp"
 #include "Ava/Private/Export.hpp"
 #include "Ava/Types.hpp"
@@ -16,7 +17,7 @@
 namespace Ava::Private::Debug_Assert {
 bool Ava_API Fail(const char* expr, const char* file,
 	i32 line, const char* fmt = nullptr, ...);
-} // namespace Ava_Private::Debug_Assert
+} // namespace Ava::Private::Debug_Assert
 
 #	define Ava_ASSERT_ACTIVE 1
 
