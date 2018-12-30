@@ -3,7 +3,7 @@
 #include "Ava/Private/Platform/Os.hpp"
 
 #if Ava_WINDOWS
-#	include <Windows.h>
+#	include "../Windows.hpp"
 #endif
 
 using namespace Ava;
