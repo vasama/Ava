@@ -9,6 +9,12 @@
 #include "Ava/Utility/Move.hpp"
 #include "Ava/Utility/MurmurHash.hpp"
 
+template<typename THash, typename T>
+Ava_FORCEINLINE void Ava_Hash(THash& hash, const T& value)
+{
+	return Ava_Ext_Hash(hash, value);
+}
+
 namespace Ava {
 
 typedef MurmurHash<Default::Value> DefaultHash;
@@ -61,7 +67,7 @@ class BasicHasher : TAlgorithm
 		template<typename T>
 		Ava_FORCEINLINE void operator()(const T& value)
 		{
-			Ava_Ext_Hash(*this, value);
+			Ava_Hash(*this, value);
 		}
 
 	private:
@@ -86,7 +92,7 @@ public:
 	uword Hash(const T& value) const
 	{
 		Interface hash(TAlgorithm::Initialize());
-		Ava_Ext_Hash(hash, value);
+		Ava_Hash(hash, value);
 		return TAlgorithm::Finalize(hash.m_hash);
 	}
 };
