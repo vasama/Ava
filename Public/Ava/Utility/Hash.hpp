@@ -33,6 +33,16 @@ struct IntegerHasher
 	}
 };
 
+constexpr Ava_FORCEINLINE bool operator==(const IntegerHasher&, const IntegerHasher&)
+{
+	return true;
+}
+
+constexpr Ava_FORCEINLINE bool operator!=(const IntegerHasher&, const IntegerHasher&)
+{
+	return false;
+}
+
 struct PointerHasher
 {
 	Ava_FORCEINLINE uword Hash(void* pointer) const
@@ -40,6 +50,16 @@ struct PointerHasher
 		return (uword)pointer;
 	}
 };
+
+constexpr Ava_FORCEINLINE bool operator==(const PointerHasher&, const PointerHasher&)
+{
+	return true;
+}
+
+constexpr Ava_FORCEINLINE bool operator!=(const PointerHasher&, const PointerHasher&)
+{
+	return false;
+}
 
 template<typename TAlgorithm>
 class BasicHasher : TAlgorithm
@@ -94,6 +114,23 @@ public:
 		Interface hash(TAlgorithm::Initialize());
 		Ava_Hash(hash, value);
 		return TAlgorithm::Finalize(hash.m_hash);
+	}
+
+private:
+	friend Ava_FORCEINLINE bool operator==(
+		const BasicHasher<TAlgorithm>& lhs,
+		const BasicHasher<TAlgorithm>& rhs)
+	{
+		return static_cast<const TAlgorithm&>(lhs)
+			== static_cast<const TAlgorithm&>(rhs);
+	}
+
+	friend Ava_FORCEINLINE bool operator!=(
+		const BasicHasher<TAlgorithm>& lhs,
+		const BasicHasher<TAlgorithm>& rhs)
+	{
+		return static_cast<const TAlgorithm&>(lhs)
+			!= static_cast<const TAlgorithm&>(rhs);
 	}
 };
 
