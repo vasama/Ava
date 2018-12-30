@@ -31,10 +31,10 @@
 
 #ifdef Ava_CONFIG_DISABLE_FORCEINLINE
 	// Force function inlining.
-#	define Ava_FORCEINLINE Ava_PLATFORM_FORCEINLINE
+#	define Ava_FORCEINLINE inline
 #else
 	// Force function inlining.
-#	define Ava_FORCEINLINE inline
+#	define Ava_FORCEINLINE Ava_PLATFORM_FORCEINLINE
 #endif
 
 // Prevent function inlining.
