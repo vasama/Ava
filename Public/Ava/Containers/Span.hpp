@@ -6,138 +6,426 @@
 #include "Ava/Meta/Traits.hpp"
 #include "Ava/Meta/TypeTraits.hpp"
 #include "Ava/Misc.hpp"
+#include "Ava/Private/PointerMath.hpp"
 #include "Ava/Types.hpp"
 
 namespace Ava {
 
 template<typename T>
-struct Span
+class Span;
+
+namespace Private::Containers_Span {
+
+template<typename T>
+class Core
 {
-	typedef RemoveConst<T> ElementType;
+public:
+	typedef T ElementType;
 
-	Ava_FORCEINLINE Span()
-		: m_size(0)
+	Ava_FORCEINLINE Core()
+		: m_f(nullptr), m_l(nullptr)
 	{
 	}
 
-	Ava_FORCEINLINE Span(T* data, iword size)
-		: m_data(data), m_size(size)
+	Ava_FORCEINLINE Core(T* f, T* l)
+		: m_f(f), m_l(l)
 	{
 	}
 
-	template<uword TSize>
-	Ava_FORCEINLINE Span(T(&data)[TSize])
-		: m_data(data), m_size((iword)TSize)
+	Ava_FORCEINLINE Core(decltype(nullptr))
+		: m_f(nullptr), m_l(nullptr)
 	{
 	}
 
-	template<typename TIn, uword TSize,
-		typename = EnableIf<IsConvertibleTo<TIn**, T* const*>>>
-	Ava_FORCEINLINE Span(TIn(&data)[TSize])
-		: m_data(data), m_size((iword)TSize)
+	Ava_FORCEINLINE Core(decltype(NoInit))
 	{
 	}
 
-	template<typename TIn,
-		typename = EnableIf<IsConvertibleTo<TIn**, T* const*>>>
-	Ava_FORCEINLINE Span(Span<TIn> other)
-		: m_data(other.m_data), m_size(other.m_size)
+	template<typename TIn>
+	Core(Span<TIn>) = delete;
+
+	template<typename TIn, uword TSize>
+	Core(TIn(&)[TSize]) = delete;
+
+	template<typename TIn>
+	Core(TIn*, TIn*) = delete;
+
+
+	Ava_FORCEINLINE uword ByteSize() const
 	{
+		return Ava_PTRSUB(m_l, m_f);
 	}
 
-	Ava_FORCEINLINE Span(decltype(nullptr))
-		: Span()
+	Ava_FORCEINLINE bool IsEmpty() const
 	{
-	}
-
-	Ava_FORCEINLINE Span(decltype(NoInit))
-	{
+		return m_f == m_l;
 	}
 
 
 	Ava_FORCEINLINE T* Data() const
 	{
-		return m_data;
+		return m_f;
 	}
+
+	Ava_FORCEINLINE T* Begin() const
+	{
+		return m_f;
+	}
+
+	Ava_FORCEINLINE T* End() const
+	{
+		return m_l;
+	}
+
+protected:
+	T* m_f;
+	T* m_l;
+
+	template<typename>
+	friend class Span;
+
+	template<typename>
+	friend class ConstLayer;
+
+	template<typename>
+	friend class ValueLayer;
+
+	template<typename>
+	friend class VoidLayer;
+};
+
+template<typename T>
+class ConstLayer : public Core<T>
+{
+	typedef Core<T> Base;
+
+public:
+	using Base::Base;
+};
+
+template<typename T>
+class ConstLayer<const T> : public Core<const T>
+{
+	typedef Core<const T> Base;
+
+public:
+	using Base::Base;
+
+	Ava_FORCEINLINE ConstLayer(T* f, T* l)
+		: Base(static_cast<const T*>(f), static_cast<const T*>(l))
+	{
+	}
+
+	Ava_FORCEINLINE ConstLayer(const T* f, T* l)
+		: Base(f, static_cast<const T*>(l))
+	{
+	}
+
+	Ava_FORCEINLINE ConstLayer(T* f, const T* l)
+		: Base(static_cast<const T*>(f), l)
+	{
+	}
+
+	Ava_FORCEINLINE ConstLayer(Span<T> span)
+		: Base(static_cast<const T*>(span.m_f),
+			static_cast<const T*>(span.m_l))
+	{
+	}
+};
+
+template<typename T>
+class ConstValueLayer : public ConstLayer<T>
+{
+	typedef ConstLayer<T> Base;
+
+public:
+	using Base::Base;
+};
+
+template<typename T>
+class ConstValueLayer<const T> : public ConstLayer<const T>
+{
+	typedef ConstLayer<const T> Base;
+
+public:
+	using Base::Base;
+
+	template<uword TSize>
+	Ava_FORCEINLINE ConstValueLayer(T(&array)[TSize])
+		: Base(static_cast<const T*>(array),
+			static_cast<const T*>(array) + TSize)
+	{
+	}
+};
+
+template<typename T>
+class ValueLayer : public ConstValueLayer<T>
+{
+	typedef ConstValueLayer<T> Base;
+
+public:
+	using Base::Base;
+};
+
+template<typename T>
+class ValueLayer<T* const>
+	: public ConstValueLayer<T* const>
+{
+	typedef ConstValueLayer<T* const> Base;
+
+public:
+	using Base::Base;
+};
+
+template<typename T>
+class ValueLayer<T const* const>
+	: public ConstValueLayer<T const* const>
+{
+	typedef ConstValueLayer<T const* const> Base;
+
+public:
+	using Base::Base;
+
+	Ava_FORCEINLINE ValueLayer(Span<T*> span)
+		: Base(static_cast<T const* const*>(span.m_f),
+			static_cast<T const* const*>(span.m_l))
+	{
+	}
+
+	Ava_FORCEINLINE ValueLayer(Span<T* const> span)
+		: Base(static_cast<T const* const*>(span.m_f),
+			static_cast<T const* const*>(span.m_l))
+	{
+	}
+
+	template<uword TSize>
+	Ava_FORCEINLINE ValueLayer(T*(&array)[TSize])
+		: Base(static_cast<T const* const*>(array),
+			static_cast<T const* const*>(array) + TSize)
+	{
+	}
+
+	template<uword TSize>
+	Ava_FORCEINLINE ValueLayer(T* const(&array)[TSize])
+		: Base(static_cast<T const* const*>(array),
+			static_cast<T const* const*>(array) + TSize)
+	{
+	}
+};
+
+template<typename T>
+Ava_FORCEINLINE T* begin(const ValueLayer<T>& span)
+{
+	return span.Begin();
+}
+
+template<typename T>
+Ava_FORCEINLINE T* end(const ValueLayer<T>& span)
+{
+	return span.End();
+}
+
+template<typename T>
+class VoidLayer : public ConstLayer<T>
+{
+	typedef ConstLayer<T> Base;
+
+public:
+	using Base::Base;
+
+	Ava_FORCEINLINE VoidLayer(T* data, uword size)
+		: Base(data, Ava_PTRADD(data, size))
+	{
+	}
+
+	template<typename TIn>
+	Ava_FORCEINLINE VoidLayer(Span<TIn> span)
+		: Base(static_cast<T*>(span.m_f), static_cast<T*>(span.m_l))
+	{
+	}
+
+	template<typename TIn, uword TSize>
+	Ava_FORCEINLINE VoidLayer(TIn(&array)[TSize])
+		: Base(static_cast<T*>(array), static_cast<T*>(array + TSize))
+	{
+	}
+
+	template<typename TIn>
+	Ava_FORCEINLINE VoidLayer(TIn* f, TIn* l)
+		: Base(static_cast<T*>(f), static_cast<T*>(l))
+	{
+	}
+
+	template<typename TIn>
+	VoidLayer(TIn*, uword) = delete;
+};
+
+} // namespace Private::Containers_Span
+
+template<typename T>
+class Span : public Private::Containers_Span::ValueLayer<T>
+{
+	typedef Private::Containers_Span::ValueLayer<T> Base;
+
+public:
+	using Base::Base;
+
+#ifdef __INTELLISENSE__
+	Span();
+#endif
+
+	Ava_FORCEINLINE Span(T* f, T* l)
+		: Base(f, l)
+	{
+	}
+
+	Ava_FORCEINLINE Span(T* data, iword size)
+		: Base(data, data + size)
+	{
+	}
+
+	template<uword TSize>
+	Ava_FORCEINLINE Span(T(&array)[TSize])
+		: Base(array, array + TSize)
+	{
+	}
+
 
 	Ava_FORCEINLINE iword Size() const
 	{
-		return m_size;
+		return Base::m_l - Base::m_f;
 	}
 
 
 	Ava_FORCEINLINE T& First() const
 	{
-		Ava_Assert(m_size > 0);
-		return m_data[0];
+		Ava_Assert(Base::m_f != Base::m_l);
+		return Base::m_f[0];
 	}
 
 	Ava_FORCEINLINE T& Last() const
 	{
-		Ava_Assert(m_size > 0);
-		return m_data[m_size - 1];
+		Ava_Assert(Base::m_f != Base::m_l);
+		return Base::m_l[-1];
 	}
 
 	Ava_FORCEINLINE T& operator[](iword index) const
 	{
-		Ava_Assert(index < m_size);
-		return m_data[index];
+		Ava_Assert(CheckIndex(index));
+		return Base::m_f[index];
 	}
 
-	Ava_FORCEINLINE Span Slice(iword index) const
+
+	Ava_FORCEINLINE Span<T> Slice(iword index) const
 	{
-		Ava_Assert(m_size >= index);
-		return Span(m_data + index, m_size - index);
+		Ava_Assert(CheckIndex(index));
+		return Span<T>(Base::m_f + index, Base::m_l);
 	}
 
-	Ava_FORCEINLINE Span Slice(iword index, iword count) const
+	Ava_FORCEINLINE Span<T> Slice(iword index, iword count) const
 	{
-		Ava_Assert(m_size >= index + count);
-		return Span(m_data + index, count);
+		Ava_Assert(CheckRange(index, count));
+
+		T* f = Base::m_f + index;
+		return Span<T>(f, f + count);
 	}
+
 
 	Ava_FORCEINLINE void RemovePrefix(iword count)
 	{
-		Ava_Assert(count <= m_size);
-		m_data += count;
-		m_size -= count;
+		Ava_Assert(Base::m_f + count <= Base::m_l);
+		Base::m_f = Base::m_f + count;
 	}
 
 	Ava_FORCEINLINE void RemoveSuffix(iword count)
 	{
-		Ava_Assert(count <= m_size);
-		m_size -= count;
+		Ava_Assert(Base::m_l - count >= Base::m_f);
+		Base::m_l = Base::m_l - count;
 	}
 
-	T* m_data;
-	iword m_size;
+
+	Ava_FORCEINLINE bool CheckIndex(iword index) const
+	{
+		return Base::m_f + index < Base::m_l;
+	}
+
+	Ava_FORCEINLINE bool CheckRange(iword index, iword count) const
+	{
+		return (index | count) >= 0 &&
+			Base::m_f + index + count <= Base::m_l;
+	}
 };
+
+template<>
+class Span<void> : public Private::Containers_Span::VoidLayer<void>
+{
+	typedef Private::Containers_Span::VoidLayer<void> Base;
+
+public:
+	using Base::Base;
+
+#ifdef __INTELLISENSE__
+	Span();
+#endif
+};
+
+template<>
+class Span<const void> : public Private::Containers_Span::VoidLayer<const void>
+{
+	typedef Private::Containers_Span::VoidLayer<const void> Base;
+
+public:
+	using Base::Base;
+
+#ifdef __INTELLISENSE__
+	Span();
+#endif
+
+	Ava_FORCEINLINE Span(void* data, uword size)
+		: Base(static_cast<const void*>(data), size)
+	{
+	}
+};
+
+template<typename T>
+Ava_FORCEINLINE iword Ava_Ext_Size(const Span<T>& span)
+{
+	return span.Size();
+}
+
+template<typename T>
+Ava_FORCEINLINE bool operator==(const Span<T>& lhs, const Span<T>& rhs)
+{
+	return lhs.Begin() == rhs.Begin() && lhs.End() == rhs.End();
+}
+
+template<typename T>
+Ava_FORCEINLINE bool operator!=(const Span<T>& lhs, const Span<T>& rhs)
+{
+	return lhs.Begin() != rhs.Begin() || lhs.End() != rhs.End();
+}
+
+#define Ava_SFINAE(...) \
+	EnableIf<IsConvertibleTo<T1**, T2* const*> || \
+		IsConvertibleTo<T2**, T1* const*>, __VA_ARGS__>
+
+template<typename T1, typename T2>
+Ava_FORCEINLINE Ava_SFINAE(bool) operator==(
+	const Span<T1>& lhs, const Span<T2>& rhs)
+{
+	return lhs.Begin() == rhs.Begin() && lhs.End() == rhs.End();
+}
+
+template<typename T1, typename T2>
+Ava_FORCEINLINE Ava_SFINAE(bool) operator!=(
+	const Span<T1>& lhs, const Span<T2>& rhs)
+{
+	return lhs.Begin() != rhs.Begin() || lhs.End() != rhs.End();
+}
+
+#undef Ava_SFINAE
 
 template<typename T> constexpr bool IsTriviallyEquatable<Span<T>> = true;
 template<typename T> constexpr bool IsZeroConstructible<Span<T>> = true;
-
-template<typename TLhs, typename TRhs>
-Ava_FORCEINLINE bool operator==(const Span<TLhs>& lhs, const Span<TRhs>& rhs)
-{
-	return lhs.m_data == rhs.m_data && lhs.m_size == rhs.m_size;
-}
-
-template<typename TLhs, typename TRhs>
-Ava_FORCEINLINE bool operator!=(const Span<TLhs>& lhs, const Span<TRhs>& rhs)
-{
-	return lhs.m_data != rhs.m_data || lhs.m_size != rhs.m_size;
-}
-
-template<typename T>
-Ava_FORCEINLINE T* begin(const Span<T>& span)
-{
-	return span.m_data;
-}
-
-template<typename T>
-Ava_FORCEINLINE T* end(const Span<T>& span)
-{
-	return span.m_data + span.m_size;
-}
 
 } // namespace Ava
