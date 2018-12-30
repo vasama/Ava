@@ -57,4 +57,7 @@ static constexpr bool IsUnsigned = std::is_unsigned_v<T>;
 template<typename TFrom, typename T>
 static constexpr bool IsConvertibleTo = std::is_convertible_v<TFrom, T>;
 
+template<typename T>
+static constexpr bool IsInheritable = std::is_class_v<T> && !std::is_final_v<T>;
+
 } // namespace Ava
