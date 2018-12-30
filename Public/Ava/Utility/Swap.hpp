@@ -38,7 +38,7 @@ Ava_FORCEINLINE void Swap(T& a, T& b, PriorityTag<0>)
 {
 	T t = Move(b);
 	b = Move(a);
-	b = Move(t);
+	a = Move(t);
 }
 
 } // namespace Private::Utility_Swap
