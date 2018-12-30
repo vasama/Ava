@@ -193,21 +193,8 @@ private:
 
 template<>
 class Algorithm<Default, Default::Value>
+	: public Algorithm<uword, DefaultSeed>
 {
-public:
-	typedef Hash HashType;
-
-	static constexpr uword BlockSize = Hash::BlockSize;
-
-	Ava_FORCEINLINE Hash Initialize() const
-	{
-		return Hash(DefaultSeed);
-	}
-
-	Ava_FORCEINLINE uword Finalize(Hash& hash) const
-	{
-		return hash.Finalize();
-	}
 };
 
 template<>
@@ -240,7 +227,36 @@ public:
 
 private:
 	uword m_seed;
+
+	friend Ava_FORCEINLINE bool operator==(
+		const Algorithm<Dynamic, Dynamic::Value>& lhs,
+		const Algorithm<Dynamic, Dynamic::Value>& rhs)
+	{
+		return lhs.m_seed == rhs.m_seed;
+	}
+
+	friend Ava_FORCEINLINE bool operator!=(
+		const Algorithm<Dynamic, Dynamic::Value>& lhs,
+		const Algorithm<Dynamic, Dynamic::Value>& rhs)
+	{
+		return lhs.m_seed != rhs.m_seed;
+	}
+
 };
+
+template<typename T, T TSeed>
+constexpr Ava_FORCEINLINE bool operator==(
+	const Algorithm<T, TSeed>&, const Algorithm<T, TSeed>&)
+{
+	return true;
+}
+
+template<typename T, T TSeed>
+constexpr Ava_FORCEINLINE bool operator!=(
+	const Algorithm<T, TSeed>&, const Algorithm<T, TSeed>&)
+{
+	return false;
+}
 
 } // namespace Private::Utility_MurmurHash
 
