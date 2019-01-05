@@ -7,6 +7,7 @@
 #include "Ava/Meta/EnableIf.hpp"
 #include "Ava/Meta/TypeTraits.hpp"
 #include "Ava/Misc.hpp"
+#include "Ava/Private/ConstexprIf.hpp"
 #include "Ava/Private/Ebo.hpp"
 #include "Ava/Utility/Forward.hpp"
 #include "Ava/Utility/Move.hpp"
@@ -101,9 +102,9 @@ public:
 		return &m_storage;
 	}
 
-	Ava_FORCEINLINE bool IsRemote(const void* storage) const
+	Ava_FORCEINLINE bool IsDynamic(const void* storage) const
 	{
-		return storage == &m_storage;
+		return storage != &m_storage;
 	}
 
 	static constexpr Ava_FORCEINLINE bool Fits(uword size)
@@ -126,7 +127,7 @@ public:
 		return nullptr;
 	}
 
-	constexpr Ava_FORCEINLINE bool IsRemote(const void*) const
+	constexpr Ava_FORCEINLINE bool IsDynamic(const void*) const
 	{
 		return true;
 	}
@@ -187,7 +188,7 @@ public:
 	{
 		if (AbstractType* src = other.m_abstract)
 		{
-			if (TMayAllocate && other.Storage::IsRemote(src))
+			if (TMayAllocate && other.Storage::IsDynamic(src))
 			{
 				Base::m_abstract = src;
 			}
@@ -206,7 +207,7 @@ public:
 	{
 		if (const AbstractType* src = other.m_abstract)
 		{
-			if (TMayAllocate && Storage::IsRemote(src))
+			if (TMayAllocate && Storage::IsDynamic(src))
 			{
 				Base::m_abstract = src->Clone();
 			}
@@ -232,7 +233,7 @@ public:
 	{
 		if (AbstractType* abstract = Base::m_abstract)
 		{
-			abstract->Destroy(TMayAllocate && Storage::IsRemote(abstract));
+			abstract->Destroy(TMayAllocate && Storage::IsDynamic(abstract));
 			Base::m_abstract = nullptr;
 		}
 		return *this;
@@ -244,7 +245,7 @@ public:
 
 		if (AbstractType* src = other.m_abstract)
 		{
-			if (TMayAllocate && other.Storage::IsRemote(src))
+			if (TMayAllocate && other.Storage::IsDynamic(src))
 			{
 				Base::m_abstract = src;
 			}
@@ -267,7 +268,7 @@ public:
 
 		if (const AbstractType* src = other.m_abstract)
 		{
-			if (TMayAllocate && Storage::IsRemote(src))
+			if (TMayAllocate && Storage::IsDynamic(src))
 			{
 				Base::m_abstract = src->Clone();
 			}
@@ -320,17 +321,33 @@ private:
 	Ava_FORCEINLINE void Clean()
 	{
 		if (AbstractType* abstract = Base::m_abstract)
-			abstract->Destroy(TMayAllocate && Storage::IsRemote(abstract));
+			abstract->Destroy(TMayAllocate && Storage::IsDynamic(abstract));
 	}
 
 	template<typename TFn, typename TAllocator>
-	void Initialize(TFn fn, TAllocator alloc)
+	void Initialize(TFn&& fn, TAllocator alloc)
+	{
+		Ava_IF_CONSTEXPR(IsInheritable<TFn>)
+		{
+			InitializeInternal(Forward<TFn>(fn), alloc);
+		}
+		else
+		{
+			InitializeInternal([fn = Forward<TFn>(fn)](TParams... args)
+				-> TResult { return fn(args...); }, alloc);
+		}
+	}
+
+	template<typename TFn, typename TAllocator>
+	void InitializeInternal(TFn fn, TAllocator alloc)
 	{
 		typedef Private::Utility_Function::Concrete<
 			TFn, DefaultAllocator, TResult, TParams...> Local;
 
-		if constexpr (Storage::Fits(sizeof(Local)))
+		Ava_IF_CONSTEXPR(Storage::Fits(sizeof(Local)))
 		{
+			static_assert(sizeof(Local) <= sizeof(Storage));
+
 			Ava_UNUSED(alloc);
 
 			typedef Local Concrete;
