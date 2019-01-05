@@ -1,19 +1,3 @@
-TEST_CASE(TEST_PREFIX "/Copy")
-{
-	TEST_PROLOGUE;
-
-	Array src;
-	src.Append(Val(1));
-	src.Append(Val(2));
-	src.Append(Val(3));
-
-	Array array(src);
-	REQUIRE_EQ(array.Size(), 3);
-	CHECK_EQ(array[0].m_value, 1);
-	CHECK_EQ(array[1].m_value, 2);
-	CHECK_EQ(array[2].m_value, 3);
-}
-
 TEST_CASE(TEST_PREFIX "/Move")
 {
 	TEST_PROLOGUE;

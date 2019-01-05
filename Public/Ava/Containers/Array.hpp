@@ -1,759 +1,888 @@
 #pragma once
 
-#include "Ava/Containers/Span.hpp"
-#include "Ava/Containers/StoragePolicy.hpp"
 #include "Ava/Algo/Utility.hpp"
+#include "Ava/Containers/Span.hpp"
+#include "Ava/Debug/Assert.hpp"
+#include "Ava/Debug/StaticAssert.hpp"
+#include "Ava/Math/Math.hpp"
 #include "Ava/Memory/AlignedStorage.hpp"
 #include "Ava/Memory/DefaultAllocator.hpp"
 #include "Ava/Memory/PolymorphicAllocator.hpp"
-#include "Ava/Meta/Constant.hpp"
+#include "Ava/Memory/Utility.hpp"
 #include "Ava/Meta/Identity.hpp"
-#include "Ava/Meta/Traits.hpp"
+#include "Ava/Meta/TypeTraits.hpp"
 #include "Ava/Misc.hpp"
 #include "Ava/Private/Containers/NullAllocator.hpp"
 #include "Ava/Private/Ebo.hpp"
+#include "Ava/Private/PointerMath.hpp"
+#include "Ava/Types.hpp"
 #include "Ava/Utility/Forward.hpp"
 #include "Ava/Utility/Move.hpp"
+#include "Ava/Utility/Range.hpp"
 
 namespace Ava {
 
+#if Ava_IDE
+
+template<typename T, typename TAllocator, iword TCapacity>
+class BasicArray
+{
+public:
+	typedef T ElementType;
+	typedef TAllocator AllocatorType;
+
+	typedef       T* Iterator;
+	typedef const T* ConstIterator;
+
+	BasicArray();
+	explicit BasicArray(TAllocator);
+	BasicArray(BasicArray&&);
+	BasicArray(const BasicArray&) = delete;
+	BasicArray& operator=(BasicArray&&);
+	BasicArray& operator=(const BasicArray&) = delete;
+
+	iword Size() const;
+	iword Capacity() const;
+
+	T* Data();
+	const T* Data() const;
+	const T* CData() const;
+	T& operator[](iword index);
+	const T& operator(iword index) const;
+	T& First(iword index);
+	const T& First(iword index) const;
+	T& Last(iword index);
+	const T& Last(iword index) const;
+
+	Span<T> Slice(iword index);
+	Span<const T> Slice(iword index) const;
+	Span<T> Slice(iword index, iword count);
+	Span<const T> Slice(iword index, iword count) const;
+	Span<const T> CSlice(iword index) const;
+	Span<const T> CSlice(iword index, iword count) const;
+	operator Span<T>();
+	operator Span<const T>() const;
+
+	template<typename TIn>
+	T* Append(TIn&& value);
+
+	template<typename... TArgs>
+	T* AppendEmplace(TArgs&&... args);
+
+	void AppendRange(Span<T> span);
+	void AppendRange(Span<const T> span);
+
+	template<typename TRange>
+	void AppendRange(TRange&& range);
+
+	template<typename TIn>
+	T* Insert(iword index, TIn&& value);
+
+	template<typename... TArgs>
+	T* InsertEmplace(iword index, TArgs&&... args);
+
+	void InsertRange(iword index, Span<T> span);
+	void InsertRange(iword index, Span<const T> span);
+
+	template<typename TRange>
+	void InsertRange(iword index, TRange&& range);
+
+	void Remove(iword index);
+	void RemoveUnstable(iword index);
+	void RemoveRange(iword index, iword count);
+	void RemoveRangeUnstable(iword index, iword count);
+	T Extract(iword index);
+	T ExtractUnstable(iword index);
+	void Clear(bool deallocate = false);
+
+	void Resize(iword newSize);
+	void ResizeUnsafe(iword newSize);
+
+	void Reserve(iword minCapacity);
+	void ShrinkToFit();
+
+	const TAllocator& GetAllocator() const;
+};
+
+template<typename T, typename TAllocator, iword TCapacity>
+typename BasicArray<T, TAllocator, TCapacity>::Iterator begin(BasicArray<T, TAllocator, TCapacity>&);
+
+template<typename T, typename TAllocator, iword TCapacity>
+typename BasicArray<T, TAllocator, TCapacity>::ConstIterator begin(const BasicArray<T, TAllocator, TCapacity>&);
+
+template<typename T, typename TAllocator, iword TCapacity>
+typename BasicArray<T, TAllocator, TCapacity>::Iterator end(BasicArray<T, TAllocator, TCapacity>&);
+
+template<typename T, typename TAllocator, iword TCapacity>
+typename BasicArray<T, TAllocator, TCapacity>::ConstIterator end(const BasicArray<T, TAllocator, TCapacity>&);
+
+#else
+
 namespace Private::Containers_Array {
 
-template<typename T, typename TStoragePolicy>
-class StorageLayer
-{
-	static_assert(Identity<False, T>::Value, "Unsupported storage policy");
-};
-
-
-/* Local storage policy */
-
-template<typename T, iword TCapacity>
-struct Local_Base
-{
-	iword m_size;
-	AlignedStorage<
-		TCapacity * sizeof(T), alignof(T)
-	> m_data;
-};
-
-template<typename T, iword TCapacity, bool = IsTriviallyDestructible<T>>
-struct Local_DestroyLayer;
-
-template<typename T, iword TCapacity>
-struct Local_DestroyLayer<T, TCapacity, 0> : Local_Base<T, TCapacity>
-{
-	typedef Local_Base<T, TCapacity> Base;
-
-	~Local_DestroyLayer()
-	{
-		if (iword size = Base::m_size)
-			Algo::Destroy((T*)&this->Base::m_data, size);
-	}
-};
-
-template<typename T, iword TCapacity>
-struct Local_DestroyLayer<T, TCapacity, 1> : Local_Base<T, TCapacity>
-{
-};
-
-template<typename T, iword TCapacity>
-class StorageLayer<T, StoragePolicy::Local<TCapacity>>
-	: public Private::Containers_::NullAllocator
-	, Local_DestroyLayer<T, TCapacity>
-{
-	typedef Local_Base<T, TCapacity> Base;
-
-public:
-	typedef Private::Containers_::NullAllocator AllocatorType;
-
-	StorageLayer(StorageLayer&& other)
-	{
-		iword size = other.m_size;
-		if (size > 0)
-		{
-			Algo::RelocateFwd((T*)&this->Base::m_data,
-				(T*)&other.m_data, size);
-			other.m_size = 0;
-		}
-		Base::m_size = size;
-	}
-
-	StorageLayer(AllocatorType)
-	{
-		Base::m_size = 0;
-	}
-
-	StorageLayer(AllocatorType, StorageLayer&& other)
-		: StorageLayer(Move(other))
-	{
-	}
-
-	Ava_FORCEINLINE T* GetData() const
-	{
-		return (T*)&this->Base::m_data;
-	}
-
-	Ava_FORCEINLINE iword GetSize() const
-	{
-		return Base::m_size;
-	}
-
-	Ava_FORCEINLINE void SetSize(iword size)
-	{
-		Base::m_size = size;
-	}
-
-	Ava_FORCEINLINE iword GetCapacity() const
-	{
-		return Base::m_capacity;
-	}
-
-	Ava_FORCEINLINE void Expand(iword minCapacity)
-	{
-		Ava_Assert(minCapacity <= TCapacity);
-	}
-
-	Ava_FORCEINLINE void Shrink(iword minCapacity)
-	{
-		Ava_Assert(minCapacity <= TCapacity);
-	}
-};
-
-
-/* Remote storage policy */
-
 template<typename T>
-struct Remote_Base
+struct Core
 {
-	T* m_data;
-	iword m_size;
-	iword m_capacity;
+	T* m_beg;
+	T* m_mid;
+	T* m_end;
+};
+
+template<typename T, typename TAllocator, iword TCapacity>
+struct StorageLayer : Ava_EBO(Core<T>, TAllocator)
+{
+	static constexpr bool MayAllocate = true;
+
+	Ava_FORCEINLINE StorageLayer(TAllocator allocator)
+		: TAllocator(Move(allocator))
+	{
+		Reset();
+	}
+
+	Ava_FORCEINLINE void Reset()
+	{
+		this->m_beg = (T*)&m_storage;
+		this->m_mid = (T*)&m_storage;
+		this->m_end = (T*)&m_storage + TCapacity;
+	}
+
+	Ava_FORCEINLINE T* Beg() const
+	{
+		return Core<T>::m_beg;
+	}
+
+	Ava_FORCEINLINE T* Mid() const
+	{
+		return Core<T>::m_mid;
+	}
+
+	Ava_FORCEINLINE T* End() const
+	{
+		return Core<T>::m_end;
+	}
+
+	Ava_FORCEINLINE bool IsDynamic(T* beg)
+	{
+		return beg != (T*)&m_storage;
+	}
+
+	AlignedStorage<
+		sizeof(T) * TCapacity, alignof(T)
+	> mutable m_storage;
 };
 
 template<typename T, typename TAllocator>
-class StorageLayer<T, StoragePolicy::Remote<TAllocator>>
-	: Ava_EBOX(public, Remote_Base<T>, TAllocator)
+struct StorageLayer<T, TAllocator, 0> : Ava_EBO(Core<T>, TAllocator)
 {
-	typedef Remote_Base<T> Base;
-	typedef ConstParam<TAllocator> AllocatorParam;
+	static constexpr bool MayAllocate = true;
 
-public:
-	typedef TAllocator AllocatorType;
-
-	StorageLayer(AllocatorParam alloc)
-		: TAllocator(alloc)
+	Ava_FORCEINLINE StorageLayer(TAllocator allocator)
+		: TAllocator(Move(allocator))
 	{
-		Base::m_size = 0;
-		Base::m_capacity = 0;
+		Reset();
 	}
 
-	StorageLayer(StorageLayer&& other)
-		: TAllocator(other)
+	Ava_FORCEINLINE void Reset()
 	{
-		Adopt(other);
+		this->m_beg = nullptr;
+		this->m_mid = nullptr;
+		this->m_end = nullptr;
 	}
 
-	StorageLayer(AllocatorParam alloc, StorageLayer&& other)
-		: TAllocator(alloc)
+	Ava_FORCEINLINE T* Beg() const
 	{
-		iword size = other.m_size;
-		if (Ava_LIKELY(alloc == static_cast<const TAllocator&>(other)))
-		{
-			Adopt(other);
-		}
-		else if (size > 0)
-		{
-			T* otherData = other.m_data;
-			iword otherCapacity = other.m_capacity;
-
-			T* data = Allocate(otherCapacity);
-			Algo::RelocateFwd(data, otherData, size);
-			other.m_size = 0;
-
-			Base::m_data = data;
-			Base::m_size = size;
-			Base::m_capacity = otherCapacity;
-		}
+		return Core<T>::m_beg;
 	}
 
-	~StorageLayer()
+	Ava_FORCEINLINE T* Mid() const
 	{
-		iword capacity = Base::m_capacity;
-		if (capacity > 0)
-		{
-			T* data = Base::m_data;
-			Algo::Destroy(data, Base::m_size);
-			Deallocate(data, capacity);
-		}
+		return Core<T>::m_mid;
 	}
 
-	Ava_FORCEINLINE T* GetData() const
+	Ava_FORCEINLINE T* End() const
 	{
-		return Base::m_data;
+		return Core<T>::m_end;
 	}
 
-	Ava_FORCEINLINE iword GetSize() const
+	Ava_FORCEINLINE bool IsDynamic(T* beg)
 	{
-		return Base::m_size;
+		return beg != nullptr;
+	}
+};
+
+template<typename T, iword TCapacity>
+struct StorageLayer<T, Containers_::NullAllocator, TCapacity>
+	: Containers_::NullAllocator
+{
+	Ava_StaticAssertSlow(TCapacity > 0);
+
+	static constexpr bool MayAllocate = false;
+
+	Ava_FORCEINLINE StorageLayer(Containers_::NullAllocator)
+	{
+		Reset();
 	}
 
-	Ava_FORCEINLINE void SetSize(iword size)
+	Ava_FORCEINLINE void Reset()
 	{
-		Base::m_size = size;
+		this->m_mid = (T*)&m_storage;
 	}
 
-	Ava_FORCEINLINE iword GetCapacity() const
+	Ava_FORCEINLINE T* Beg() const
 	{
-		return Base::m_capacity;
+		return (T*)&m_storage;
 	}
 
-	Ava_FORCEINLINE void Expand(iword minCapacity)
+	Ava_FORCEINLINE T* Mid() const
 	{
-		if (Ava_UNLIKELY(minCapacity > Base::m_capacity))
-			ExpandInternal(minCapacity);
+		return m_mid;
 	}
 
-	Ava_FORCEINLINE void Shrink(iword minCapacity)
+	Ava_FORCEINLINE T* End() const
 	{
-		iword newCapacity = minCapacity * GrowthFactor;
-		if (newCapacity < Base::m_capacity)
-			ShrinkInternal(minCapacity);
+		return (T*)&m_storage + TCapacity;
 	}
 
-	Ava_FORCEINLINE const TAllocator& GetAllocator() const
-	{
-		return static_cast<const TAllocator&>(*this);
-	}
+	T* m_mid;
 
-	Ava_FORCEINLINE void SetAllocator(const TAllocator& alloc)
-	{
-		static_cast<TAllocator&>(*this) = alloc;
-	}
-
-private:
-	Ava_FORCEINLINE void Adopt(StorageLayer& other)
-	{
-		Base::m_data = other.m_data;
-		Base::m_size = other.m_size;
-		Base::m_capacity = other.m_capacity;
-
-		other.m_size = 0;
-		other.m_capacity = 0;
-	}
-
-	void Cleanup()
-	{
-		if (iword capacity = Base::m_capacity)
-		{
-			T* data = Base::m_data;
-			Algo::Destroy(data, Base::m_size);
-			Deallocate(data, capacity);
-		}
-	}
-
-	Ava_FORCENOINLINE void ResizeInternal(iword capacity, iword newCapacity)
-	{
-		T* data = Base::m_data;
-
-		T* newData = Allocate(newCapacity);
-		Algo::RelocateFwd(newData, data, Base::m_size);
-		Deallocate(data, capacity);
-
-		Base::m_data = newData;
-	}
-
-	Ava_FORCENOINLINE void ExpandInternal(iword newCapacity)
-	{
-		iword capacity = Base::m_capacity;
-		if (capacity == 0)
-		{
-			Base::m_data = Allocate(newCapacity);
-		}
-		else
-		{
-			iword grow = capacity * GrowthFactor;
-			newCapacity = newCapacity > grow ? newCapacity : grow;
-			ResizeInternal(capacity, newCapacity);
-		}
-		Base::m_capacity = newCapacity;
-	}
-
-	Ava_FORCENOINLINE void ShrinkInternal(iword newCapacity)
-	{
-		if (newCapacity == 0)
-		{
-			Deallocate(Base::m_data, Base::m_capacity);
-		}
-		else
-		{
-			ResizeInternal(Base::m_capacity, newCapacity);
-		}
-		Base::m_capacity = newCapacity;
-	}
-
-	Ava_FORCEINLINE T* Allocate(iword newCapacity) const
-	{
-		return (T*)TAllocator::Allocate(newCapacity * sizeof(T));
-	}
-
-	Ava_FORCEINLINE void Deallocate(T* data, iword capacity) const
-	{
-		TAllocator::Deallocate(data, capacity * sizeof(T));
-	}
-
-	static constexpr iword GrowthFactor = 2;
-
-	static constexpr bool CanRelocate = IsTriviallyRelocatable<T>;
+	AlignedStorage<
+		sizeof(T) * TCapacity, alignof(T)
+	> mutable m_storage;
 };
 
 } // namespace Private::Containers_Array
 
-template<typename T, typename TStoragePolicy>
-class BasicArray : Private::Containers_Array::StorageLayer<T, TStoragePolicy>
+template<typename T, typename TAllocator, iword TCapacity>
+class BasicArray
 {
-	typedef Private::Containers_Array::StorageLayer<T, TStoragePolicy> Base;
+#define Ava_MOVEALLOC(...) static_cast<TAllocator&&>(__VA_ARGS__)
+#define Ava_COPYALLOC(...) static_cast<const TAllocator&>(__VA_ARGS__)
+
+	Ava_StaticAssertSlow(TCapacity >= 0);
 
 public:
 	typedef T ElementType;
-	typedef typename Base::AllocatorType AllocatorType;
+	typedef TAllocator AllocatorType;
 
-private:
-	typedef ConstParam<AllocatorType> AllocatorParam;
-
-public:
 	typedef       T* Iterator;
 	typedef const T* ConstIterator;
 
+
 	Ava_FORCEINLINE BasicArray()
-		: BasicArray(AllocatorType())
+		: m_storage(TAllocator())
 	{
 	}
 
-	explicit Ava_FORCEINLINE BasicArray(AllocatorParam alloc)
-		: Base(alloc)
+	explicit Ava_FORCEINLINE BasicArray(TAllocator allocator)
+		: m_storage(Move(allocator))
 	{
 	}
 
-	Ava_FORCEINLINE BasicArray(BasicArray&& other)
-		: Base(Move(other))
+	Ava_FORCEINLINE BasicArray(BasicArray&& src)
+		: m_storage(Ava_MOVEALLOC(src.m_storage))
 	{
+		MoveConstructInternal(Move(src), TCapacity * sizeof(T));
 	}
 
-	Ava_FORCEINLINE BasicArray(AllocatorParam alloc, BasicArray&& other)
-		: Base(alloc, Move(other))
+	template<iword TSrcCapacity>
+	Ava_FORCEINLINE BasicArray(BasicArray<T, TAllocator, TSrcCapacity>&& src)
+		: m_storage(Ava_MOVEALLOC(src.m_storage))
 	{
+		MoveConstructInternal(Move(src), TCapacity * sizeof(T));
 	}
 
-	Ava_FORCEINLINE BasicArray(const BasicArray& other)
-		: BasicArray(other.GetAllocator(), other)
+	BasicArray(const BasicArray&) = delete;
+
+	Ava_FORCEINLINE BasicArray& operator=(BasicArray&& src)
 	{
-	}
-
-	BasicArray(AllocatorParam alloc, const BasicArray& other)
-		: Base(alloc)
-	{
-		iword size = other.Base::GetSize();
-		if (size > 0)
-		{
-			Base::Expand(size);
-			Algo::CopyConstruct(Base::GetData(), other.Base::GetData(), size);
-
-			Base::SetSize(size);
-		}
-	}
-
-
-	Ava_FORCEINLINE BasicArray& operator=(BasicArray&& other)
-	{
-		Assign(Move(other));
+		MoveAssignInternal(Move(src), TCapacity * sizeof(T));
 		return *this;
 	}
 
-	Ava_FORCEINLINE BasicArray& operator=(const BasicArray& other)
+	template<iword TSrcCapacity>
+	Ava_FORCEINLINE BasicArray& operator=(BasicArray<T, TAllocator, TSrcCapacity>&& src)
 	{
-		Assign(other);
+		MoveAssignInternal(Move(src), TCapacity * sizeof(T));
 		return *this;
 	}
 
-	Ava_FORCEINLINE void Assign(BasicArray&& other)
-	{
-		Assign(other.GetAllocator(), Move(other));
-	}
+	BasicArray& operator=(const BasicArray&) = delete;
 
-	Ava_FORCEINLINE void Assign(AllocatorParam alloc, BasicArray&& other)
+	~BasicArray()
 	{
-		if (Ava_LIKELY(alloc == GetAllocator()))
-		{
-			Base::Assign(Move(other));
-		}
-		else
-		{
-			Base::Assign(alloc, Move(other));
-		}
-	}
+		T* beg = m_storage.Beg();
+		Algo::Destroy(beg, m_storage.m_mid);
 
-	Ava_FORCEINLINE void Assign(const BasicArray& other)
-	{
-		Assign(other.GetAllocator(), other);
-	}
-
-	void Assign(AllocatorParam alloc, const BasicArray& other)
-	{
-		if (Ava_LIKELY(alloc == Base::GetAllocator()))
-		{
-			iword size = Base::GetSize();
-			Algo::Destroy(Base::GetData(), size);
-		}
-		else
-		{
-			Base::Clean();
-			Base::SetAllocator(alloc);
-		}
-
-		iword newSize = other.Base::GetSize();
-		if (newSize > 0)
-		{
-			Base::Expand(newSize);
-			Algo::CopyConstruct(Base::GetData(),
-				other.Base::GetData(), newSize);
-		}
-		Base::SetSize(newSize);
+		if constexpr (m_storage.MayAllocate)
+			if (m_storage.IsDynamic(beg))
+				m_storage.Deallocate(beg, Ava_PTRSUB(m_storage.m_end, beg));
 	}
 
 
 	Ava_FORCEINLINE iword Size() const
 	{
-		return Base::GetSize();
+		return m_storage.m_mid - m_storage.Beg();
 	}
 
 	Ava_FORCEINLINE iword Capacity() const
 	{
-		return Base::GetCapacity();
+		return m_storage.End() - m_storage.Beg();
 	}
 
 
 	Ava_FORCEINLINE T* Data()
 	{
-		return Base::GetData();
+		return m_storage.Beg();
 	}
 
 	Ava_FORCEINLINE const T* Data() const
 	{
-		return Base::GetData();
+		return m_storage.Beg();
+	}
+
+	Ava_FORCEINLINE const T* CData() const
+	{
+		return m_storage.Beg();
 	}
 
 	Ava_FORCEINLINE T& operator[](iword index)
 	{
-		Ava_AssertSlow(CheckIndex(index));
-		return Base::GetData()[index];
+		Ava_Assert(CheckIndex(index));
+		return *(m_storage.Beg() + index);
 	}
 
 	Ava_FORCEINLINE const T& operator[](iword index) const
 	{
-		Ava_AssertSlow(CheckIndex(index));
-		return Base::GetData()[index];
+		Ava_Assert(CheckIndex(index));
+		return *(m_storage.Beg() + index);
+	}
+
+	Ava_FORCEINLINE T& First()
+	{
+		Ava_Assert(m_storage.m_mid != m_storage.End());
+		return *m_storage.Beg();
+	}
+
+	Ava_FORCEINLINE const T& First() const
+	{
+		Ava_Assert(m_storage.m_mid != m_storage.End());
+		return *m_storage.Beg();
+	}
+
+	Ava_FORCEINLINE T& Last()
+	{
+		Ava_Assert(m_storage.m_mid != m_storage.End());
+		return *(m_storage.m_mid - 1);
+	}
+
+	Ava_FORCEINLINE const T& Last() const
+	{
+		Ava_Assert(m_storage.m_mid != m_storage.End());
+		return *(m_storage.m_mid - 1);
 	}
 
 
 	Ava_FORCEINLINE Span<T> Slice(iword index)
 	{
-		Ava_AssertSlow(CheckIndex(index));
-		return Span<T>(Base::GetData() + index, Base::GetSize() - index);
+		Ava_Assert(CheckIndex(index));
+		return Span<T>(m_storage.Beg() + index, m_storage.m_mid);
 	}
 
 	Ava_FORCEINLINE Span<const T> Slice(iword index) const
 	{
-		Ava_AssertSlow(CheckIndex(index));
-		return Span<const T>(Base::GetData() + index, Base::GetSize() - index);
+		Ava_Assert(CheckIndex(index));
+		return Span<const T>(m_storage.Beg() + index, m_storage.m_mid);
 	}
 
 	Ava_FORCEINLINE Span<T> Slice(iword index, iword count)
 	{
-		Ava_AssertSlow(CheckRange(index, count));
-		return Span<T>(Base::GetData() + index, count);
+		Ava_Assert(CheckRange(index, count));
+		T* data = m_storage.Beg() + index;
+		return Span<T>(data, data + count);
 	}
 
 	Ava_FORCEINLINE Span<const T> Slice(iword index, iword count) const
 	{
-		Ava_AssertSlow(CheckRange(index, count));
-		return Span<const T>(Base::GetData() + index, count);
+		Ava_Assert(CheckRange(index, count));
+		T* data = m_storage.Beg() + index;
+		return Span<const T>(data, data + count);
+	}
+
+	Ava_FORCEINLINE Span<const T> CSlice(iword index) const
+	{
+		return Slice(index);
+	}
+
+	Ava_FORCEINLINE Span<const T> CSlice(iword index, iword count) const
+	{
+		return Slice(index, count);
 	}
 
 	Ava_FORCEINLINE operator Span<T>()
 	{
-		return Span<T>(Base::GetData(), Base::GetSize());
+		return Span<T>(m_storage.Beg(), m_storage.m_mid);
 	}
 
 	Ava_FORCEINLINE operator Span<const T>() const
 	{
-		return Span<const T>(Base::GetData(), Base::GetSize());
+		return Span<const T>(m_storage.Beg(), m_storage.m_mid);
 	}
 
 
-	Ava_FORCEINLINE void Append(T&& value)
+	template<typename TIn>
+	Ava_FORCEINLINE T* Append(TIn&& value)
 	{
-		MoveConstruct<T>(AppendInternal(1), Move(value));
+		T* slot = AppendInternal(1);
+		Construct<T>(slot, Forward<TIn>(value));
+		return slot;
 	}
 
-	Ava_FORCEINLINE void Append(const T& value)
+	template<typename... TArgs>
+	Ava_FORCEINLINE T* AppendEmplace(TArgs&&... args)
 	{
-		CopyConstruct<T>(AppendInternal(1), value);
+		T* slot = AppendInternal(1);
+		Construct<T>(slot, Forward<TArgs>(args)...);
+		return slot;
 	}
 
 	Ava_FORCEINLINE void AppendRange(Span<T> span)
 	{
-		Algo::CopyConstruct(AppendInternal(span.Size()), span.Data(), span.Size());
+		Algo::CopyConstruct(AppendInternal(
+			span.Size()), span.Begin(), span.End());
 	}
 
 	Ava_FORCEINLINE void AppendRange(Span<const T> span)
 	{
-		Algo::CopyConstruct(AppendInternal(span.Size()), span.Data(), span.Size());
+		Algo::CopyConstruct(AppendInternal(
+			span.Size()), span.Begin(), span.End());
 	}
 
 	template<typename TRange>
-	Ava_FORCEINLINE void AppendRange(const TRange& range)
+	Ava_FORCEINLINE void AppendRange(TRange&& range)
 	{
-		Ava_UNUSED(range);
-		Ava_Assert(false);
+		T* area = AppendInternal(Ava::Size(range));
+
+		if constexpr (IsRRef<TRange>)
+		{
+			Algo::ConvMoveConstruct(area,
+				Ava::Begin(range), Ava::End(range));
+		}
+		else
+		{
+			Algo::ConvCopyConstruct(area,
+				Ava::Begin(range), Ava::End(range));
+		}
+	}
+
+
+	template<typename TIn>
+	Ava_FORCEINLINE T* Insert(iword index, TIn&& value)
+	{
+		Ava_Assert(CheckRange(index, 0));
+		T* slot = InsertInternal(index, 1);
+		Construct<T>(slot, Forward<TIn>(value));
+		return slot;
 	}
 
 	template<typename... TArgs>
-	Ava_FORCEINLINE void AppendEmplace(TArgs&&... args)
+	Ava_FORCEINLINE T* InsertEmplace(iword index, TArgs&&... args)
 	{
-		Construct<T>(AppendInternal(1), Forward<TArgs>(args)...);
-	}
-
-
-	Ava_FORCEINLINE void Insert(iword index, T&& value)
-	{
-		MoveConstruct<T>(InsertInternal(index, 1), Move(value));
-	}
-
-	Ava_FORCEINLINE void Insert(iword index, const T& value)
-	{
-		CopyConstruct<T>(InsertInternal(index, 1), value);
+		Ava_Assert(CheckRange(index, 0));
+		T* slot = InsertInternal(index, 1);
+		Construct<T>(slot, Forward<TArgs>(args)...);
+		return slot;
 	}
 
 	Ava_FORCEINLINE void InsertRange(iword index, Span<T> span)
 	{
-		Algo::CopyConstruct(InsertInternal(index, span.Size()), span.Data(), span.Size());
+		Ava_Assert(CheckRange(index, 0));
+		Algo::CopyConstruct(InsertInternal(index,
+			span.Size()), span.Begin(), span.End());
 	}
 
 	Ava_FORCEINLINE void InsertRange(iword index, Span<const T> span)
 	{
-		Algo::CopyConstruct(InsertInternal(index, span.Size()), span.Data(), span.Size());
+		Ava_Assert(CheckRange(index, 0));
+		Algo::CopyConstruct(InsertInternal(index,
+			span.Size()), span.Begin(), span.End());
 	}
 
 	template<typename TRange>
-	Ava_FORCEINLINE void InsertRange(iword index, const TRange& range)
+	Ava_FORCEINLINE void InsertRange(iword index, TRange&& range)
 	{
-		Ava_UNUSED(index, range);
-		Ava_Assert(false);
-	}
+		Ava_Assert(CheckRange(index, 0));
+		T* area = InsertInternal(index, Ava::Size(range));
 
-	template<typename... TArgs>
-	Ava_FORCEINLINE void InsertEmplace(iword index, TArgs&&... args)
-	{
-		Construct<T>(InsertInternal(index, 1), Forward<TArgs>(args)...);
+		if constexpr (IsRRef<TRange>)
+		{
+			Algo::ConvMoveConstruct(area,
+				Ava::Begin(range), Ava::End(range));
+		}
+		else
+		{
+			Algo::ConvCopyConstruct(area,
+				Ava::Begin(range), Ava::End(range));
+		}
 	}
 
 
 	Ava_FORCEINLINE void Remove(iword index)
 	{
+		Ava_Assert(CheckIndex(index));
 		RemoveInternal(index, 1, true);
 	}
 
 	Ava_FORCEINLINE void RemoveUnstable(iword index)
 	{
+		Ava_Assert(CheckIndex(index));
 		RemoveInternal(index, 1, false);
 	}
 
 	Ava_FORCEINLINE void RemoveRange(iword index, iword count)
 	{
+		Ava_Assert(CheckRange(index, count));
 		RemoveInternal(index, count, true);
 	}
 
 	Ava_FORCEINLINE void RemoveRangeUnstable(iword index, iword count)
 	{
+		Ava_Assert(CheckRange(index, count));
 		RemoveInternal(index, count, false);
 	}
 
-
 	Ava_FORCEINLINE T Extract(iword index)
 	{
-		T* elem = Base::GetData() + index;
-		T result = Move(*elem);
+		Ava_Assert(CheckIndex(index));
+		T result = Move(*(m_storage.Beg() + index));
 		RemoveInternal(index, 1, true);
 		return result;
 	}
 
 	Ava_FORCEINLINE T ExtractUnstable(iword index)
 	{
-		T* elem = Base::GetData() + index;
-		T result = Move(*elem);
+		Ava_Assert(CheckIndex(index));
+		T result = Move(*(m_storage.Beg() + index));
 		RemoveInternal(index, 1, false);
 		return result;
 	}
 
-
-	void Resize(iword newSize)
+	Ava_FORCEINLINE void Clear()
 	{
-		ResizeInternal(newSize, true);
+		T* beg = m_storage.Beg();
+		Algo::Destroy(beg, m_storage.m_mid);
+		m_storage.m_mid = beg;
 	}
 
-	void ResizeUnsafe(iword newSize)
+
+	Ava_FORCEINLINE void Resize(iword newSize)
 	{
-		ResizeInternal(newSize, false);
+		ResizeInternal(newSize * sizeof(T), true);
 	}
 
-	void Clear(bool deallocate = false)
+	Ava_FORCEINLINE void ResizeUnsafe(iword newSize)
 	{
-		iword size = Base::GetSize();
-		if (size > 0)
-			Algo::Destroy(Base::GetData(), size);
-		Base::SetSize(0);
-
-		if (deallocate)
-			Base::Shrink(0);
+		ResizeInternal(newSize * sizeof(T), false);
 	}
 
-	void Reserve(iword newCapacity)
+
+	void Reserve(iword minCapacity)
 	{
-		Base::Expand(newCapacity);
+		uword minByteCapacity = minCapacity * sizeof(T);
+		uword byteCapacity = Ava_PTRSUB(m_storage.End(), m_storage.Beg());
+		if (Ava_LIKELY(minByteCapacity > byteCapacity))
+			ExpandInternal(minByteCapacity);
 	}
 
 	void ShrinkToFit()
 	{
-		Base::Shrink(Base::GetSize());
+		Shrink(m_storage.m_mid);
 	}
 
 
-	Ava_FORCEINLINE bool CheckIndex(iword index) const
+	const TAllocator& GetAllocator() const
 	{
-		return (uword)index < (uword)Base::GetSize();
-	}
-
-	Ava_FORCEINLINE bool CheckRange(iword index, iword count) const
-	{
-		iword size = Base::GetSize();
-		return (uword)index < (uword)size &&
-			(uword)count <= (uword)(size - index);
-	}
-
-	Ava_FORCEINLINE const AllocatorType& GetAllocator() const
-	{
-		return static_cast<const AllocatorType&>(*this);
+		return Ava_COPYALLOC(m_storage);
 	}
 
 private:
-	Ava_FORCEINLINE T* AppendInternal(iword count)
+	template<iword TSrcCapacity>
+	void MoveConstructInternal(BasicArray<T, TAllocator, TSrcCapacity>&& src, uword localByteCapacity)
 	{
-		iword size = Base::GetSize();
-		iword newSize = size + count;
+		T* srcbeg = src.m_storage.Beg();
+		T* srcmid = src.m_storage.m_mid;
+		uword byteSize = Ava_PTRSUB(srcmid, srcbeg);
 
-		Base::Expand(newSize);
+		if constexpr (m_storage.MayAllocate)
+		{
+			if (!src.m_storage.IsDynamic(src.m_storage.m_beg))
+				goto move_elements;
 
-		T* elem = Base::GetData() + size;
-		Base::SetSize(newSize);
-		return elem;
+			if constexpr (TCapacity > TSrcCapacity)
+				if (Ava_PTRSUB(src.m_storage.m_end, src.m_storage.m_beg) < localByteCapacity)
+					goto move_elements;
+
+			m_storage.m_beg = src.m_storage.m_beg;
+			m_storage.m_mid = src.m_storage.m_mid;
+			m_storage.m_end = src.m_storage.m_end;
+			src.m_storage.Reset();
+
+			return;
+		move_elements:
+
+			if (byteSize > localByteCapacity)
+			{
+				T* beg = (T*)m_storage.Allocate(byteSize);
+				T* end = Ava_PTRADD(beg, byteSize);
+
+				m_storage.m_beg = beg;
+				m_storage.m_mid = end;
+				m_storage.m_end = end;
+			}
+		}
+		else Ava_Assert(byteSize <= localByteCapacity);
+
+		T* beg = m_storage.Beg();
+		Algo::Relocate(beg, srcbeg, srcmid);
+		m_storage.m_mid = Ava_PTRADD(beg, byteSize);
+		src.m_storage.m_mid = srcbeg;
 	}
 
-	Ava_FORCEINLINE T* InsertInternal(iword index, iword count)
+	template<iword TSrcCapacity>
+	void MoveAssignInternal(BasicArray<T, TAllocator, TSrcCapacity>&& src, uword localByteCapacity)
 	{
-		iword size = Base::GetSize();
-		iword newSize = size + count;
+		T* srcbeg = src.m_storage.Beg();
+		T* srcmid = src.m_storage.m_mid;
+		uword byteSize = Ava_PTRSUB(srcmid, srcbeg);
 
-		Base::Expand(newSize);
+		T* beg = m_storage.Beg();
+		T* mid = m_storage.m_mid;
+		Algo::Destroy(beg, mid);
 
-		T* data = Base::GetData();
-
-		T* rift = data + index;
-		if (rift != data + size)
+		mid = Ava_PTRADD(beg, byteSize);
+		if constexpr (m_storage.MayAllocate)
 		{
-			T* last = data + newSize;
-			Algo::RelocateBwd(last, last - count, rift);
-		}
+			if (Ava_UNLIKELY(Ava_COPYALLOC(src.m_storage) != Ava_COPYALLOC(m_storage)))
+				goto move_elements;
 
-		Base::SetSize(newSize);
+			if (!src.m_storage.IsDynamic(src.m_storage.m_beg))
+				goto move_elements;
+
+			if constexpr (TCapacity > TSrcCapacity)
+			{
+				if (Ava_PTRSUB(src.m_storage.m_end, src.m_storage.m_beg) < localByteCapacity)
+					goto move_elements;
+			}
+			else Ava_UNUSED(localByteCapacity);
+
+			if (m_storage.IsDynamic(beg))
+				m_storage.Deallocate(beg, Ava_PTRSUB(m_storage.m_end, beg));
+
+			m_storage.m_beg = src.m_storage.m_beg;
+			m_storage.m_mid = src.m_storage.m_mid;
+			m_storage.m_end = src.m_storage.m_end;
+			src.m_storage.Reset();
+
+			return;
+		move_elements:
+
+			if (mid > m_storage.m_end)
+			{
+				beg = ExpandInternal(byteSize);
+				mid = Ava_PTRADD(beg, byteSize);
+			}
+		}
+		else Ava_Assert(byteSize <= localByteCapacity);
+
+		Algo::Relocate(beg, srcbeg, srcmid);
+		src.m_storage.m_mid = srcbeg;
+		m_storage.m_mid = mid;
+	}
+
+	Ava_FORCEINLINE T* AppendInternal(iword count)
+	{
+		T* mid = m_storage.m_mid;
+		T* newmid = mid + count;
+
+		if constexpr (m_storage.MayAllocate)
+		{
+			if (Ava_UNLIKELY(newmid > m_storage.m_end))
+			{
+				T* beg = m_storage.Beg();
+
+				uword byteSize = Ava_PTRSUB(newmid, beg);
+				T* newbeg = ExpandInternal(byteSize);
+
+				mid = Ava_PTRADD(newbeg, Ava_PTRSUB(mid, beg));
+				newmid = Ava_PTRADD(newbeg, byteSize);
+			}
+		}
+		else Ava_Assert(newmid - m_storage.Beg() <= TCapacity);
+
+		m_storage.m_mid = newmid;
+		return mid;
+	}
+
+	T* InsertInternal(iword index, iword count)
+	{
+		T* beg = m_storage.Beg();
+		T* mid = m_storage.m_mid;
+		T* newmid = mid + count;
+
+		if constexpr (m_storage.MayAllocate)
+		{
+			if (Ava_UNLIKELY(newmid > m_storage.m_end))
+			{
+				uword byteSize = Ava_PTRSUB(newmid, beg);
+				T* newbeg = ExpandInternal(byteSize);
+
+				mid = Ava_PTRADD(newbeg, Ava_PTRSUB(mid, beg));
+				newmid = Ava_PTRADD(newbeg, byteSize);
+				beg = newbeg;
+			}
+		}
+		else Ava_Assert(newmid - beg <= TCapacity);
+
+		T* rift = beg + index;
+
+		if (rift != mid)
+			Algo::RelocateBwd(newmid, mid, rift);
+
+		m_storage.m_mid = newmid;
 		return rift;
 	}
 
-	Ava_FORCEINLINE void RemoveInternal(iword index, iword count, bool stable)
+	void RemoveInternal(iword index, iword count, bool stable)
 	{
-		iword size = Base::GetSize();
-		iword newSize = size - count;
+		T* beg = m_storage.Beg();
+		T* mid = m_storage.m_mid;
 
-		T* data = Base::GetData();
-
-		T* rift = data + index;
+		T* rift = beg + index;
 		T* next = rift + count;
 
 		Algo::Destroy(rift, next);
 
-		T* last = data + size;
+		T* newmid = mid - count;
 
-		if (rift < last - 1)
-			Algo::RelocateFwd(rift, stable ? next : last - count, data + size);
+		if (next != mid)
+			Algo::RelocateFwd(rift, stable ? next : newmid, mid);
 
-		Base::SetSize(newSize);
+		m_storage.m_mid = newmid;
 	}
 
-	Ava_FORCEINLINE void ResizeInternal(iword newSize, bool safe)
+	void ResizeInternal(uword byteSize, bool safe)
 	{
-		iword size = Base::GetSize();
-		if (Ava_LIKELY(newSize > size))
+		T* beg = m_storage.Beg();
+		T* mid = m_storage.m_mid;
+		T* newmid = Ava_PTRADD(beg, byteSize);
+
+		if (Ava_LIKELY(newmid > mid))
 		{
-			Base::Expand(newSize);
+			if constexpr (m_storage.MayAllocate)
+			{
+				T* newbeg = ExpandInternal(byteSize);
+				mid = Ava_PTRADD(newbeg, Ava_PTRSUB(mid, beg));
+				newmid = Ava_PTRADD(newbeg, byteSize);
+			}
+			else Ava_Assert(newmid - beg <= TCapacity);
 
 			if (safe)
-				Algo::ValueConstruct(Base::GetData() + size, newSize - size);
-
-			Base::SetSize(newSize);
+				Algo::ValueConstruct(mid, newmid);
 		}
-		else if (Ava_LIKELY(newSize < size))
+		else if (Ava_LIKELY(newmid < mid))
 		{
 			if (safe)
-				Algo::Destroy(Base::GetData() + newSize, size - newSize);
-
-			Base::SetSize(newSize);
+				Algo::Destroy(newmid, mid);
 		}
+		m_storage.m_mid = newmid;
 	}
+
+	Ava_FORCENOINLINE T* ExpandInternal(uword minByteCapacity)
+	{
+		T* beg = m_storage.m_beg;
+		T* mid = m_storage.m_mid;
+		T* end = m_storage.m_end;
+
+		uword byteCapacity = Ava_PTRSUB(end, beg);
+		uword newByteCapacity = Math::Max(
+			minByteCapacity, byteCapacity * 2);
+
+		T* newbeg = (T*)m_storage.Allocate(newByteCapacity);
+		T* newend = Ava_PTRADD(newbeg, newByteCapacity);
+
+		if (beg != mid)
+			Algo::Relocate(newbeg, beg, mid);
+
+		if (m_storage.IsDynamic(beg))
+			m_storage.Deallocate(beg, byteCapacity);
+
+		m_storage.m_beg = newbeg;
+		m_storage.m_mid = Ava_PTRADD(newbeg, Ava_PTRSUB(mid, beg));
+		m_storage.m_end = newend;
+
+		return newbeg;
+	}
+
+	Ava_FORCEINLINE bool CheckIndex(iword index) const
+	{
+		return (uword)index < (uword)Size();
+	}
+
+	Ava_FORCEINLINE bool CheckRange(iword index, iword count) const
+	{
+		iword size = Size();
+		return (uword)index <= (uword)size &&
+			(uword)count <= (uword)(size - index);
+	}
+
+	Private::Containers_Array::StorageLayer<
+		T, TAllocator, TCapacity> m_storage;
 
 	Ava_FORCEINLINE friend Iterator begin(BasicArray& array)
 	{
-		return array.Base::GetData();
-	}
-
-	Ava_FORCEINLINE friend Iterator end(BasicArray& array)
-	{
-		return array.Base::GetData() + array.Base::GetSize();
+		return array.m_storage.Beg();
 	}
 
 	Ava_FORCEINLINE friend ConstIterator begin(const BasicArray& array)
 	{
-		return array.Base::GetData();
+		return array.m_storage.Beg();
+	}
+
+	Ava_FORCEINLINE friend Iterator end(BasicArray& array)
+	{
+		return array.m_storage.m_mid;
 	}
 
 	Ava_FORCEINLINE friend ConstIterator end(const BasicArray& array)
 	{
-		return array.Base::GetData() + array.Base::GetSize();
+		return array.m_storage.m_mid;
 	}
+
+#undef Ava_MOVEALLOC
+#undef Ava_COPYALLOC
 };
 
+#endif
+
+template<typename T, typename TAllocator, iword TCapacity>
+Ava_FORCEINLINE iword Ava_Ext_Size(const BasicArray<T, TAllocator, TCapacity>& array)
+{
+	return array.Size();
+}
+
+
 template<typename T, typename TAllocator = DefaultAllocator>
-using Array = BasicArray<T, StoragePolicy::Remote<TAllocator>>;
+using Array = BasicArray<T, TAllocator, 0>;
 
 template<typename T>
 using PmArray = Array<T, PolymorphicAllocator>;
 
 template<typename T, iword TCapacity, typename TAllocator = DefaultAllocator>
-using SmallArray = BasicArray<T, StoragePolicy::Small<TAllocator, TCapacity>>;
+using SmallArray = BasicArray<T, TAllocator, TCapacity>;
 
 template<typename T, iword TCapacity>
 using PmSmallArray = SmallArray<T, TCapacity, PolymorphicAllocator>;
 
 template<typename T, iword TCapacity>
-using InplaceArray = BasicArray<T, StoragePolicy::Local<TCapacity>>;
+using InplaceArray = BasicArray<T, Private::Containers_::NullAllocator, TCapacity>;
 
 } // namespace Ava
